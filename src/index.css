@@ -5,8 +5,20 @@
    MAXIMUM LEGIBILITY • BOLD EXECUTIVE PRESENCE
    ══════════════════════════════════════════════ */
 @theme {
-  --color-void: #04060A;
-  --color-panel: rgba(10, 15, 25, 0.95);
+  --color-paper: #F7F4EE;
+  --color-ink: #0F0E0C;
+  --color-muted: #4A453C;
+  --color-sage: #2E4780;
+  --color-hairline: rgba(28, 26, 23, 0.10);
+  --color-night: #0E0D0C;
+  
+  --font-serif: 'Instrument Serif', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Legacy aliases for existing HUD components (will be removed when components are updated) */
+  --color-void: #070706;
+  --color-panel: rgba(255, 253, 247, 0.03);
   --color-panel-light: rgba(10, 15, 25, 0.88);
   --color-neon: #00FFCC;
   --color-neon-dim: rgba(0, 255, 204, 0.5);
@@ -17,29 +29,79 @@
   --color-border-neon: rgba(0, 255, 204, 0.6);
   --color-border-crimson: rgba(255, 0, 85, 0.5);
   --color-dim: #A0AEC0;
-
   --font-hud: 'JetBrains Mono', ui-monospace, monospace;
   --font-ui: 'Inter', system-ui, sans-serif;
 }
 
-/* ── Reset ── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  /* ── Reset ── */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
 }
 
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .anim-cinematic-drift {
+    animation: none !important;
+    transform: scale(1) !important;
+  }
 }
 
-body {
-  font-family: var(--font-hud);
-  background: var(--color-void);
-  color: var(--color-pure);
-  min-height: 100dvh;
-  overflow: hidden;
+/* ── SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── CINEMATIC DRIFT ── */
+@keyframes cinematic-drift {
+  0% { transform: scale(1.05) translate(0, 0); }
+  50% { transform: scale(1.08) translate(-1%, 1%); }
+  100% { transform: scale(1.05) translate(0, 0); }
+}
+.anim-cinematic-drift {
+  animation: cinematic-drift 30s ease-in-out infinite;
+}
+
+@layer utilities {
+  .hairline {
+    border: 1px solid var(--color-hairline);
+  }
+}
+
+#root {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ══════════════════════════════════
@@ -144,22 +206,50 @@ body {
 .anim-fade-in-d3 { animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
 
 /* View Transitions */
-.fade-enter {
-  opacity: 0;
-  transform: scale(0.98);
-}
-.fade-enter-active {
-  opacity: 1;
-  transform: scale(1);
-  transition: opacity 300ms ease-out, transform 300ms ease-out;
-}
-/* Fallback mount animation for raw react */
-@keyframes view-fade-in {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
-}
 .view-transition {
-  animation: view-fade-in 300ms ease-out forwards;
+  animation: view-fade-in 250ms ease-in-out forwards;
+}
+
+@keyframes view-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ══════════════════════════════════
+   3D HERO TILT & LIDAR SCAN
+   ══════════════════════════════════ */
+.perspective-container {
+  perspective: 1200px;
+}
+@keyframes float-sway {
+  0%, 100% { transform: rotateY(-7deg) rotateX(3deg) scale(0.98); }
+  50% { transform: rotateY(7deg) rotateX(3deg) scale(0.98); }
+}
+.tilt-panel-3d {
+  animation: float-sway 10s ease-in-out infinite;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.perspective-container:hover .tilt-panel-3d {
+  animation: none;
+  transform: rotateY(0deg) rotateX(0deg) scale(1);
+}
+
+@keyframes laser-scan {
+  0% { transform: translateY(-20px); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; } /* sweeps completely down */
+}
+.anim-laser-scan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-sage);
+  box-shadow: 0 0 15px 4px var(--color-sage);
+  animation: laser-scan 3.5s linear infinite;
+  z-index: 10;
 }
 
 /* ══════════════════════════════════

@@ -11,66 +11,56 @@ import {
    VISION HUD — ML LIVE SPATIAL ENGINE
    ═══════════════════════════════════════════════════ */
 
-/* ── SLEEK rounded corner-bracket reticle ── */
-function drawBoundingBox(ctx, x, y, w, h, color, lineWidth = 3) {
+/* ── CRISP thin corner-bracket reticle ── */
+function drawBoundingBox(ctx, x, y, w, h, color, lineWidth = 2) {
   const cornerLen = 12
-  const radius = 6
   ctx.strokeStyle = color
   ctx.lineWidth = lineWidth
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-
-  function drawCorner(startX, startY, midX, midY, endX, endY) {
-    ctx.beginPath()
-    ctx.moveTo(startX, startY)
-    ctx.arcTo(midX, midY, endX, endY, radius)
-    ctx.lineTo(endX, endY)
-    ctx.stroke()
-  }
+  ctx.lineCap = 'square'
 
   // Top-Left
-  drawCorner(x, y + cornerLen, x, y, x + cornerLen, y)
+  ctx.beginPath(); ctx.moveTo(x, y + cornerLen); ctx.lineTo(x, y); ctx.lineTo(x + cornerLen, y); ctx.stroke()
   // Top-Right
-  drawCorner(x + w - cornerLen, y, x + w, y, x + w, y + cornerLen)
+  ctx.beginPath(); ctx.moveTo(x + w - cornerLen, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + cornerLen); ctx.stroke()
   // Bottom-Left
-  drawCorner(x, y + h - cornerLen, x, y + h, x + cornerLen, y + h)
+  ctx.beginPath(); ctx.moveTo(x, y + h - cornerLen); ctx.lineTo(x, y + h); ctx.lineTo(x + cornerLen, y + h); ctx.stroke()
   // Bottom-Right
-  drawCorner(x + w, y + h - cornerLen, x + w, y + h, x + w - cornerLen, y + h)
+  ctx.beginPath(); ctx.moveTo(x + w - cornerLen, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - cornerLen); ctx.stroke()
 }
 
-/* ── SOLID DARK label badge above bounding box ── */
-function drawLabelBadge(ctx, text, x, y, w, color) {
-  ctx.font = 'bold 12px "JetBrains Mono", monospace'
+/* ── COMPACT label badge above bounding box ── */
+function drawLabelBadge(ctx, text, x, y, w, color, isHazard) {
+  ctx.font = 'bold 11px "JetBrains Mono", monospace'
   const textWidth = ctx.measureText(text).width
-  const badgeH = 26
-  const badgeY = y - badgeH - 8
-  const badgePadX = 12
+  const badgeH = 22
+  const badgeY = y - badgeH - 6
+  const badgePadX = 8
   const badgeW = Math.max(w, textWidth + badgePadX * 2)
 
-  // Floating Glass
-  ctx.fillStyle = 'rgba(10, 15, 25, 0.88)'
+  // Solid dark glass
+  ctx.fillStyle = 'rgba(10, 15, 25, 0.90)'
   ctx.strokeStyle = color
-  ctx.lineWidth = 1.5
-  ctx.beginPath(); ctx.roundRect(x, badgeY, badgeW, badgeH, 6); ctx.fill(); ctx.stroke()
+  ctx.lineWidth = 1
+  ctx.beginPath(); ctx.roundRect(x, badgeY, badgeW, badgeH, 3); ctx.fill(); ctx.stroke()
 
   ctx.fillStyle = color
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, x + badgePadX, badgeY + badgeH / 2 + 1)
+  
+  if (isHazard) {
+    const t = Date.now() * 0.005
+    ctx.globalAlpha = 0.5 + Math.sin(t) * 0.5
+    ctx.fillText(text, x + badgePadX, badgeY + badgeH / 2 + 1)
+    ctx.globalAlpha = 1
+  } else {
+    ctx.fillText(text, x + badgePadX, badgeY + badgeH / 2 + 1)
+  }
 }
 
-/* ── Glowing gradient laser line ── */
-function drawLaserLine(ctx, x1, y1, x2, y2, color, alpha = 0.8) {
-  const grad = ctx.createLinearGradient(x1, y1, x2, y2)
-  grad.addColorStop(0, 'rgba(0,255,204,0.8)') // Teal center
-  grad.addColorStop(1, 'rgba(255,0,85,0.8)')  // Crimson hazard
-
-  ctx.strokeStyle = grad
-  ctx.lineWidth = 4
-  ctx.globalAlpha = alpha * 0.15
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke()
-
-  ctx.lineWidth = 2
+/* ── Fine 1px Trajectory line ── */
+function drawTrajectoryLine(ctx, x1, y1, x2, y2, color, alpha = 0.8) {
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1
   ctx.globalAlpha = alpha
   ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke()
   ctx.globalAlpha = 1
@@ -104,8 +94,7 @@ export default function VisionHUD({
   hazardMode,
   onToggleAudio,
   onToggleHazard,
-  onShowModal,
-  onBackToLanding 
+  onStopDemo 
 }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -120,7 +109,19 @@ export default function VisionHUD({
   // Audio tracking refs
   const lastSafePingRef = useRef(0)
   const lastHazardVibeRef = useRef(0)
-  const prevAudioEnabledRef = useRef(false)
+  
+  // Handle explicit exit
+  const handleExit = () => {
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current)
+      animRef.current = null
+    }
+    setHazardTone(false)
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(t => t.stop())
+    }
+    onStopDemo()
+  }
   
   /* ── Load TensorFlow Model ── */
   useEffect(() => {
@@ -144,13 +145,14 @@ export default function VisionHUD({
   /* ── Init Camera ── */
   useEffect(() => {
     let stream = null
+    let isMounted = true
     async function startCamera() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: 1280, height: 720 },
           audio: false,
         })
-        if (videoRef.current) {
+        if (isMounted && videoRef.current) {
           videoRef.current.srcObject = stream
           await videoRef.current.play()
           setCameraActive(true)
@@ -161,18 +163,10 @@ export default function VisionHUD({
     }
     startCamera()
     return () => {
+      isMounted = false
       if (stream) stream.getTracks().forEach(t => t.stop())
-      if (animRef.current) cancelAnimationFrame(animRef.current)
     }
   }, [])
-
-  /* ── Cleanup audio if disabled ── */
-  useEffect(() => {
-    if (prevAudioEnabledRef.current && !audioEnabled) {
-      setHazardTone(false)
-    }
-    prevAudioEnabledRef.current = audioEnabled
-  }, [audioEnabled])
 
   /* ── ML Detection Loop ── */
   useEffect(() => {
@@ -247,7 +241,7 @@ export default function VisionHUD({
             
             const [origX, origY, origW, origH] = pred.bbox
             
-            // Constrain bounding box to screen edges to prevent full screen stretch
+            // Strictly constrain bounding box to screen edges
             let bx = Math.max(0, origX * scale + offsetX)
             let by = Math.max(0, origY * scale + offsetY)
             let bw = Math.min(w - bx, origW * scale)
@@ -281,27 +275,24 @@ export default function VisionHUD({
             }
             
             const color = isHazard ? '#FF0055' : '#00FFCC'
-            const colorRgb = isHazard ? '255, 0, 85' : '0, 255, 204'
             const estDist = Math.max(0.5, (h / bh) * 0.4).toFixed(1)
             
-            // Tint
-            ctx.fillStyle = `rgba(${colorRgb}, ${isHazard ? 0.1 : 0.05})`
-            ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 8); ctx.fill()
-            
-            // Box
-            drawBoundingBox(ctx, bx, by, bw, bh, color, 3)
+            // Box (crisp thin corners)
+            drawBoundingBox(ctx, bx, by, bw, bh, color, 2)
             
             // Label
-            const labelPrefix = isHazard ? '[POSENET INT8] COLLISION HAZARD' : `[YOLOv12 INT8] ${pred.class.toUpperCase()}`
-            const labelSuffix = isHazard ? '0.5m (CRITICAL)' : `${estDist}m (SAFE)`
-            drawLabelBadge(ctx, `${labelPrefix} • ${labelSuffix}`, bx, by, bw, color)
+            const labelText = isHazard 
+              ? `[POSENET INT8] COLLISION HAZARD • ${estDist}m`
+              : `[YOLOv12 INT8] ${pred.class.toUpperCase()} • ${estDist}m`
+            drawLabelBadge(ctx, labelText, bx, by, bw, color, isHazard)
             
+            // Vector trajectory
             if (isHazard) {
               const t = now * 0.005
-              const laserAlpha = 0.6 + Math.sin(t) * 0.4
-              drawLaserLine(ctx, cx, cy, objCx, objCy, color, laserAlpha)
+              const alpha = 0.5 + Math.sin(t) * 0.5
+              drawTrajectoryLine(ctx, cx, cy, objCx, objCy, color, alpha)
             } else {
-              ctx.strokeStyle = `rgba(${colorRgb}, 0.25)`
+              ctx.strokeStyle = `rgba(0, 255, 204, 0.25)`
               ctx.lineWidth = 1
               ctx.setLineDash([4, 6])
               ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(objCx, objCy); ctx.stroke()
@@ -329,6 +320,8 @@ export default function VisionHUD({
               playSafePing(primarySafePan)
               lastSafePingRef.current = now
             }
+          } else {
+            setHazardTone(false)
           }
           
           window.dispatchEvent(new CustomEvent('spatial-pan-live', { 
@@ -348,7 +341,10 @@ export default function VisionHUD({
     detect()
     
     return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current)
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current)
+        animRef.current = null
+      }
       setHazardTone(false)
     }
   }, [modelLoaded, cameraActive, audioEnabled, hazardMode])
@@ -360,18 +356,18 @@ export default function VisionHUD({
       className="anim-fade-in-d1 relative flex-1 w-full h-full bg-black overflow-hidden"
     >
       {/* ── TOP-LEFT NAVIGATION ── */}
-      <div className="absolute top-4 left-4 z-50 flex items-center gap-4">
+      <div className="absolute top-4 left-4 z-50 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <button 
-          onClick={onBackToLanding}
-          className="px-5 py-2.5 rounded-full border border-white/[0.1] bg-[rgba(15,22,35,0.75)] backdrop-blur-md text-[11px] font-bold tracking-[0.1em] text-white hover:bg-[rgba(15,22,35,0.95)] hover:border-[#00FFCC]/50 transition-all shadow-lg outline-none"
+          onClick={handleExit}
+          className="px-4 py-2 rounded-full border border-white/[0.1] bg-[rgba(15,22,35,0.75)] backdrop-blur-md text-[10px] font-bold tracking-[0.1em] text-white hover:bg-[rgba(15,22,35,0.95)] hover:border-[#FF0055]/50 hover:text-[#FF0055] transition-all shadow-lg outline-none cursor-pointer"
         >
-          ← BACK TO OVERVIEW
+          STOP DEMO ✕
         </button>
 
         {/* Camera Status */}
-        <div className={`px-4 py-2 rounded-full border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-md flex items-center gap-2.5`}>
-          <span className={`w-2.5 h-2.5 rounded-full ${cameraActive ? 'bg-[#00FFCC] pulse-dot' : 'bg-[#FF0055] pulse-crimson'}`} />
-          <span className="text-[11px] font-bold tracking-[0.15em] text-white">
+        <div className={`px-3 py-2 rounded-full border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-md flex items-center gap-2`}>
+          <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-[#00FFCC] pulse-dot' : 'bg-[#FF0055] pulse-crimson'}`} />
+          <span className="text-[10px] font-bold tracking-[0.15em] text-white">
             {cameraActive ? 'CAMERA LIVE' : 'INITIALIZING'}
           </span>
         </div>
@@ -382,7 +378,7 @@ export default function VisionHUD({
       {!modelLoaded && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-[rgba(4,6,10,0.85)] backdrop-blur-md">
           <div className="flex flex-col items-center gap-4">
-            <span className="w-6 h-6 rounded-full border-2 border-neon border-t-transparent animate-spin" />
+            <span className="w-6 h-6 rounded-full border-2 border-[#00FFCC] border-t-transparent animate-spin" />
             <span className="text-[14px] font-bold text-[#00FFCC] glow-neon tracking-wider">
               INITIALIZING QUALCOMM NPU ENGINE...
             </span>
@@ -402,36 +398,29 @@ export default function VisionHUD({
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }} />
 
       {/* ── FLOATING BOTTOM DOCK ── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <div className="flex items-center gap-3 px-6 py-4 rounded-2xl border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-xl shadow-2xl flex-wrap justify-center w-full max-w-[90vw]">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit px-4">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 px-4 py-3 rounded-2xl border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-xl shadow-2xl w-full">
           
           <button
             onClick={onToggleAudio}
-            className={`px-5 py-3 rounded-xl border transition-all text-[12px] font-bold tracking-wide flex items-center gap-2 outline-none ${
+            className={`px-4 py-2 rounded-xl border transition-all text-[10px] md:text-[11px] font-bold tracking-wide flex items-center justify-center gap-2 outline-none cursor-pointer w-full sm:w-auto ${
               audioEnabled 
                 ? 'bg-[#00FFCC]/10 border-[#00FFCC] text-[#00FFCC] shadow-[0_0_15px_rgba(0,255,204,0.2)]' 
                 : 'bg-white/[0.05] border-white/20 text-white hover:bg-white/10'
             }`}
           >
-            🔊 {audioEnabled ? 'SPATIAL AUDIO: ON' : 'TOGGLE 3D SPATIAL AUDIO'}
+            🔊 {audioEnabled ? 'SPATIAL AUDIO: ON' : 'TOGGLE 3D AUDIO'}
           </button>
 
           <button
             onClick={onToggleHazard}
-            className={`px-5 py-3 rounded-xl border transition-all text-[12px] font-bold tracking-wide flex items-center gap-2 outline-none ${
+            className={`px-4 py-2 rounded-xl border transition-all text-[10px] md:text-[11px] font-bold tracking-wide flex items-center justify-center gap-2 outline-none cursor-pointer w-full sm:w-auto ${
               hazardMode 
                 ? 'bg-[#FF0055]/10 border-[#FF0055] text-[#FF0055] shadow-[0_0_15px_rgba(255,0,85,0.2)]' 
                 : 'bg-white/[0.05] border-white/20 text-white hover:bg-[#FF0055]/10 hover:border-[#FF0055]/30 hover:text-[#FF0055]'
             }`}
           >
-            ⚠️ {hazardMode ? 'STOP SIMULATION' : 'SIMULATE HAZARD TRAJECTORY'}
-          </button>
-
-          <button
-            onClick={onShowModal}
-            className="px-5 py-3 rounded-xl border border-white/20 bg-white/[0.05] hover:bg-white/10 transition-all text-[12px] font-bold tracking-wide flex items-center gap-2 text-white outline-none"
-          >
-            ✈️ ISOLATION MODAL
+            ⚠️ {hazardMode ? 'STOP SIMULATION' : 'SIMULATE HAZARD'}
           </button>
 
         </div>
