@@ -292,22 +292,22 @@ export default function LandingPage({
         
         <div className="w-full bg-[var(--color-paper)] relative overflow-hidden flex flex-col">
           {/* Trending Marquee */}
-          <div className="flex w-[200%] py-4 border-y border-[var(--color-hairline)] opacity-60 group">
-          <div className="animate-marquee items-center justify-around font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-ink)] group-hover:[animation-play-state:paused]">
-            <span className="mx-8">● 100% Air-Gapped</span>
-            <span className="mx-8">● Sub-15ms Latency</span>
-            <span className="mx-8">● Zero Cloud Reliance</span>
-            <span className="mx-8">● NPU Accelerated</span>
-            <span className="mx-8">● Zero Data Footprint</span>
+          <div className="flex w-full overflow-hidden whitespace-nowrap py-4 border-y border-[var(--color-hairline)] opacity-60 group">
+            <div className="flex animate-marquee items-center justify-around font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-ink)] group-hover:[animation-play-state:paused] flex-shrink-0 min-w-full">
+              <span className="mx-8">● 100% Air-Gapped</span>
+              <span className="mx-8">● Sub-15ms Latency</span>
+              <span className="mx-8">● Zero Cloud Reliance</span>
+              <span className="mx-8">● NPU Accelerated</span>
+              <span className="mx-8">● Zero Data Footprint</span>
+            </div>
+            <div className="flex animate-marquee items-center justify-around font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-ink)] group-hover:[animation-play-state:paused] flex-shrink-0 min-w-full" aria-hidden="true">
+              <span className="mx-8">● 100% Air-Gapped</span>
+              <span className="mx-8">● Sub-15ms Latency</span>
+              <span className="mx-8">● Zero Cloud Reliance</span>
+              <span className="mx-8">● NPU Accelerated</span>
+              <span className="mx-8">● Zero Data Footprint</span>
+            </div>
           </div>
-          <div className="animate-marquee items-center justify-around font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-ink)] group-hover:[animation-play-state:paused]" aria-hidden="true">
-            <span className="mx-8">● 100% Air-Gapped</span>
-            <span className="mx-8">● Sub-15ms Latency</span>
-            <span className="mx-8">● Zero Cloud Reliance</span>
-            <span className="mx-8">● NPU Accelerated</span>
-            <span className="mx-8">● Zero Data Footprint</span>
-          </div>
-        </div>
 
         <footer className="w-full mx-auto py-8 md:py-[2vw] px-5 md:px-[2.2vw] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-[1.5vw]">
           <div className="flex items-center gap-4 md:gap-[1vw]">
