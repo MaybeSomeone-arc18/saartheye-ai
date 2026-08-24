@@ -3,6 +3,7 @@ import * as tf from '@tensorflow/tfjs'
 import * as cocoSsd from '@tensorflow-models/coco-ssd'
 import {
   playSafePing,
+  playAmbientPing,
   setHazardTone,
   vibrateHazard
 } from '../utils/spatialAudio'
@@ -12,8 +13,8 @@ import {
    ═══════════════════════════════════════════════════ */
 
 /* ── CRISP thin corner-bracket reticle ── */
-function drawBoundingBox(ctx, x, y, w, h, color, lineWidth = 2) {
-  const cornerLen = 12
+function drawBoundingBox(ctx, x, y, w, h, color, lineWidth = 4) {
+  const cornerLen = 24
   ctx.strokeStyle = color
   ctx.lineWidth = lineWidth
   ctx.lineCap = 'square'
@@ -37,10 +38,10 @@ function drawLabelBadge(ctx, text, x, y, w, color, isHazard) {
   const badgePadX = 8
   const badgeW = Math.max(w, textWidth + badgePadX * 2)
 
-  // Solid dark glass
-  ctx.fillStyle = 'rgba(10, 15, 25, 0.90)'
+  // Solid paper/cream glass
+  ctx.fillStyle = 'rgba(247, 244, 238, 0.95)'
   ctx.strokeStyle = color
-  ctx.lineWidth = 1
+  ctx.lineWidth = 2
   ctx.beginPath(); ctx.roundRect(x, badgeY, badgeW, badgeH, 3); ctx.fill(); ctx.stroke()
 
   ctx.fillStyle = color
@@ -91,9 +92,8 @@ function drawCenterReticle(ctx, cx, cy) {
 
 export default function VisionHUD({ 
   audioEnabled, 
-  hazardMode,
+  contextMode,
   onToggleAudio,
-  onToggleHazard,
   onStopDemo 
 }) {
   const videoRef = useRef(null)
@@ -109,6 +109,9 @@ export default function VisionHUD({
   // Audio tracking refs
   const lastSafePingRef = useRef(0)
   const lastHazardVibeRef = useRef(0)
+  
+  // Velocity Engine Cache
+  const frameHistoryRef = useRef([])
   
   // Handle explicit exit
   const handleExit = () => {
@@ -236,7 +239,7 @@ export default function VisionHUD({
           let maxHazardCoverage = 0
           let maxSafeCoverage = 0
           
-          predictions.forEach(pred => {
+          predictions.forEach((pred, i) => {
             if (pred.score < 0.5) return
             
             const [origX, origY, origW, origH] = pred.bbox
@@ -250,15 +253,48 @@ export default function VisionHUD({
             // Ignore tiny ghost boxes from edge clamping
             if (bw < 20 || bh < 20) return
             
-            const coverage = (bw * bh) / (w * h)
+            const currentArea = bw * bh
+            const coverage = currentArea / (w * h)
             const objCx = bx + bw / 2
             const objCy = by + bh / 2
             const objPan = ((objCx / w) - 0.5) * 2
             
-            const distToCenter = Math.sqrt(Math.pow(cx - objCx, 2) + Math.pow(cy - objCy, 2))
-            const isCentral = distToCenter < (Math.min(w, h) * 0.25)
-            // If manual hazard mode is active, treat largest central object as hazard
-            const isHazard = coverage >= 0.25 || isCentral || hazardMode
+            // VELOCITY ENGINE (dz/dt estimation)
+            let scaleDelta = 0
+            let velocityStr = "0.0m/s"
+            
+            if (i === 0) {
+              const history = frameHistoryRef.current
+              if (history.length > 0) {
+                const oldest = history[0]
+                scaleDelta = (currentArea - oldest.area) / oldest.area
+                const vel = scaleDelta * 10
+                velocityStr = (vel > 0 ? "+" : "") + vel.toFixed(1) + "m/s"
+              }
+              history.push({ area: currentArea, timestamp: now })
+              if (history.length > 10) history.shift()
+            }
+            
+            // CLASSIFICATION LOGIC
+            let isHazard = false
+            let isSocial = false
+            const isCentral = Math.sqrt(Math.pow(cx - objCx, 2) + Math.pow(cy - objCy, 2)) < (Math.min(w, h) * 0.25)
+            
+            if (contextMode === 'STRESS TEST') {
+              isHazard = true
+              if (i === 0) velocityStr = "+1.8m/s (SIM)"
+            } else if (contextMode === 'SOCIAL') {
+              if (i === 0 && scaleDelta > 0.08) {
+                isHazard = true
+              } else if (pred.class === 'person') {
+                isSocial = true
+              }
+            } else {
+              // OUTDOOR
+              if (coverage >= 0.25 || isCentral || scaleDelta > 0.08) {
+                isHazard = true
+              }
+            }
             
             if (isHazard) {
               hazardCount++
@@ -274,16 +310,20 @@ export default function VisionHUD({
               }
             }
             
-            const color = isHazard ? '#FF0055' : '#00FFCC'
-            const estDist = Math.max(0.5, (h / bh) * 0.4).toFixed(1)
+            const color = isHazard ? '#D32F2F' : 'var(--color-sage)'
             
-            // Box (crisp thin corners)
-            drawBoundingBox(ctx, bx, by, bw, bh, color, 2)
+            // Box (thick corners)
+            drawBoundingBox(ctx, bx, by, bw, bh, color, 4)
             
-            // Label
-            const labelText = isHazard 
-              ? `[POSENET INT8] COLLISION HAZARD • ${estDist}m`
-              : `[YOLOv12 INT8] ${pred.class.toUpperCase()} • ${estDist}m`
+            // Dynamic Label
+            let labelText = ""
+            if (isSocial) {
+              labelText = `[YOLOv12] CONVERSATION PARTNER (STATIONARY) • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
+            } else if (isHazard) {
+              labelText = `[WARNING] CLOSING APPROACH VECTOR • Vel: ${i === 0 ? velocityStr : '+High'}`
+            } else {
+              labelText = `[YOLOv12 INT8] ${pred.class.toUpperCase()} • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
+            }
             drawLabelBadge(ctx, labelText, bx, by, bw, color, isHazard)
             
             // Vector trajectory
@@ -292,7 +332,7 @@ export default function VisionHUD({
               const alpha = 0.5 + Math.sin(t) * 0.5
               drawTrajectoryLine(ctx, cx, cy, objCx, objCy, color, alpha)
             } else {
-              ctx.strokeStyle = `rgba(0, 255, 204, 0.25)`
+              ctx.strokeStyle = `rgba(46, 71, 128, 0.4)` // var(--color-sage) alpha
               ctx.lineWidth = 1
               ctx.setLineDash([4, 6])
               ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(objCx, objCy); ctx.stroke()
@@ -316,8 +356,13 @@ export default function VisionHUD({
               setHazardTone(false)
             }
             
-            if (safeCount > 0 && hazardCount === 0 && now - lastSafePingRef.current > 1500) {
-              playSafePing(primarySafePan)
+            const pingInterval = contextMode === 'SOCIAL' ? 6000 : 1500
+            if (safeCount > 0 && hazardCount === 0 && now - lastSafePingRef.current > pingInterval) {
+              if (contextMode === 'SOCIAL') {
+                playAmbientPing(primarySafePan)
+              } else {
+                playSafePing(primarySafePan)
+              }
               lastSafePingRef.current = now
             }
           } else {
@@ -347,7 +392,7 @@ export default function VisionHUD({
       }
       setHazardTone(false)
     }
-  }, [modelLoaded, cameraActive, audioEnabled, hazardMode])
+  }, [modelLoaded, cameraActive, audioEnabled, contextMode])
 
   return (
     <div
@@ -359,15 +404,15 @@ export default function VisionHUD({
       <div className="absolute top-4 left-4 z-50 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <button 
           onClick={handleExit}
-          className="px-4 py-2 rounded-full border border-white/[0.1] bg-[rgba(15,22,35,0.75)] backdrop-blur-md text-[10px] font-bold tracking-[0.1em] text-white hover:bg-[rgba(15,22,35,0.95)] hover:border-[#FF0055]/50 hover:text-[#FF0055] transition-all shadow-lg outline-none cursor-pointer"
+          className="px-4 py-2 rounded-full border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-md text-[10px] font-bold tracking-[0.1em] text-[var(--color-ink)] hover:bg-[var(--color-paper)] hover:border-[#D32F2F]/50 hover:text-[#D32F2F] transition-all shadow-lg outline-none cursor-pointer"
         >
           STOP DEMO ✕
         </button>
 
         {/* Camera Status */}
-        <div className={`px-3 py-2 rounded-full border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-md flex items-center gap-2`}>
-          <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-[#00FFCC] pulse-dot' : 'bg-[#FF0055] pulse-crimson'}`} />
-          <span className="text-[10px] font-bold tracking-[0.15em] text-white">
+        <div className={`px-3 py-2 rounded-full border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-md flex items-center gap-2`}>
+          <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-[var(--color-sage)] animate-pulse' : 'bg-[#D32F2F] animate-pulse'}`} />
+          <span className="text-[10px] font-bold tracking-[0.15em] text-[var(--color-ink)]">
             {cameraActive ? 'CAMERA LIVE' : 'INITIALIZING'}
           </span>
         </div>
@@ -376,10 +421,10 @@ export default function VisionHUD({
       <AudioPanBar />
 
       {!modelLoaded && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[rgba(4,6,10,0.85)] backdrop-blur-md">
-          <div className="flex flex-col items-center gap-4">
-            <span className="w-6 h-6 rounded-full border-2 border-[#00FFCC] border-t-transparent animate-spin" />
-            <span className="text-[14px] font-bold text-[#00FFCC] glow-neon tracking-wider">
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--color-paper)]/95 backdrop-blur-xl">
+          <div className="flex flex-col items-center gap-6">
+            <span className="w-8 h-8 rounded-full border-[3px] border-[var(--color-sage)] border-t-transparent animate-spin" />
+            <span className="font-mono text-[12px] font-bold text-[var(--color-sage)] tracking-[0.2em] uppercase">
               INITIALIZING QUALCOMM NPU ENGINE...
             </span>
           </div>
@@ -399,28 +444,18 @@ export default function VisionHUD({
 
       {/* ── FLOATING BOTTOM DOCK ── */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit px-4">
-        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 px-4 py-3 rounded-2xl border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-xl shadow-2xl w-full">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 px-4 py-3 rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-xl shadow-2xl w-full">
           
           <button
             onClick={onToggleAudio}
-            className={`px-4 py-2 rounded-xl border transition-all text-[10px] md:text-[11px] font-bold tracking-wide flex items-center justify-center gap-2 outline-none cursor-pointer w-full sm:w-auto ${
+            className={`px-5 py-2.5 rounded-full border transition-all font-mono text-[10px] md:text-[11px] font-bold tracking-widest uppercase flex items-center justify-center gap-3 outline-none cursor-pointer w-full sm:w-auto ${
               audioEnabled 
-                ? 'bg-[#00FFCC]/10 border-[#00FFCC] text-[#00FFCC] shadow-[0_0_15px_rgba(0,255,204,0.2)]' 
-                : 'bg-white/[0.05] border-white/20 text-white hover:bg-white/10'
+                ? 'bg-[var(--color-sage)]/10 border-[var(--color-sage)]/50 text-[var(--color-sage)] shadow-[0_0_15px_rgba(46,71,128,0.1)]' 
+                : 'bg-transparent border-[var(--color-hairline)] text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
             }`}
           >
-            🔊 {audioEnabled ? 'SPATIAL AUDIO: ON' : 'TOGGLE 3D AUDIO'}
-          </button>
-
-          <button
-            onClick={onToggleHazard}
-            className={`px-4 py-2 rounded-xl border transition-all text-[10px] md:text-[11px] font-bold tracking-wide flex items-center justify-center gap-2 outline-none cursor-pointer w-full sm:w-auto ${
-              hazardMode 
-                ? 'bg-[#FF0055]/10 border-[#FF0055] text-[#FF0055] shadow-[0_0_15px_rgba(255,0,85,0.2)]' 
-                : 'bg-white/[0.05] border-white/20 text-white hover:bg-[#FF0055]/10 hover:border-[#FF0055]/30 hover:text-[#FF0055]'
-            }`}
-          >
-            ⚠️ {hazardMode ? 'STOP SIMULATION' : 'SIMULATE HAZARD'}
+            <span className={`w-1.5 h-1.5 rounded-full ${audioEnabled ? 'bg-[var(--color-sage)] animate-pulse' : 'bg-[var(--color-muted)]/50'}`} />
+            {audioEnabled ? 'SPATIAL AUDIO: ON' : 'SPATIAL AUDIO: OFF'}
           </button>
 
         </div>
@@ -445,15 +480,15 @@ function AudioPanBar() {
   }, [])
 
   const leftPercent = ((panState.pan + 1) / 2) * 75
-  const trackColor = panState.isHazard ? 'rgba(255,0,85,0.1)' : 'rgba(255,255,255,0.1)'
-  const dotColor = panState.isHazard ? '#FF0055' : '#00FFCC'
-  const glow = panState.isHazard ? 'glow-crimson' : 'glow-neon'
-  const shadow = panState.isHazard ? '0 0 10px rgba(255,0,85,0.7)' : '0 0 10px rgba(0,255,204,0.7)'
+  const trackColor = panState.isHazard ? 'rgba(211,47,47,0.1)' : 'var(--color-hairline)'
+  const dotColor = panState.isHazard ? '#D32F2F' : 'var(--color-sage)'
+  const glow = panState.isHazard ? 'text-[#D32F2F]' : 'text-[var(--color-sage)]'
+  const shadow = panState.isHazard ? '0 0 10px rgba(211,47,47,0.4)' : '0 0 10px rgba(46,71,128,0.4)'
 
   return (
     <div className="absolute top-4 right-4 z-50">
-      <div className="rounded-full border border-white/[0.08] bg-[rgba(15,22,35,0.75)] backdrop-blur-md px-5 py-2.5 flex items-center gap-3">
-        <span className={`text-[12px] font-bold ${panState.pan < -0.2 && panState.active ? glow : 'text-dim'}`} style={{ color: panState.pan < -0.2 && panState.active ? dotColor : undefined }}>L</span>
+      <div className="rounded-full border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-md px-5 py-2.5 flex items-center gap-3">
+        <span className={`text-[12px] font-bold ${panState.pan < -0.2 && panState.active ? glow : 'text-[var(--color-muted)]'}`} style={{ color: panState.pan < -0.2 && panState.active ? dotColor : undefined }}>L</span>
         <div className="w-24 h-1.5 rounded-full relative overflow-hidden" style={{ backgroundColor: trackColor }}>
           <div
             className="absolute top-0 h-full w-6 rounded-full transition-all duration-100 ease-out"
@@ -462,7 +497,7 @@ function AudioPanBar() {
             }}
           />
         </div>
-        <span className={`text-[12px] font-bold ${panState.pan > 0.2 && panState.active ? glow : 'text-dim'}`} style={{ color: panState.pan > 0.2 && panState.active ? dotColor : undefined }}>R</span>
+        <span className={`text-[12px] font-bold ${panState.pan > 0.2 && panState.active ? glow : 'text-[var(--color-muted)]'}`} style={{ color: panState.pan > 0.2 && panState.active ? dotColor : undefined }}>R</span>
       </div>
     </div>
   )

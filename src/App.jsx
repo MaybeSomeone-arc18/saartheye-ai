@@ -8,7 +8,7 @@ import {
 
 export default function App() {
   const [audioEnabled, setAudioEnabled] = useState(false)
-  const [hazardMode, setHazardMode] = useState(false)
+  const [contextMode, setContextMode] = useState('OUTDOOR')
 
   /* Audio unlock on first interaction */
   useEffect(() => {
@@ -35,20 +35,15 @@ export default function App() {
     })
   }, [])
 
-  const handleToggleHazard = useCallback(() => {
-    setHazardMode(prev => {
-      vibrateTap()
-      return !prev
-    })
-  }, [])
+
 
   return (
     <div className="w-full h-dvh">
       <LandingPage 
         audioEnabled={audioEnabled}
-        hazardMode={hazardMode}
+        contextMode={contextMode}
         onToggleAudio={handleToggleAudio}
-        onToggleHazard={handleToggleHazard}
+        setContextMode={setContextMode}
       />
     </div>
   )

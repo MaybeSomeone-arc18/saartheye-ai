@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   SPATIAL AUDIO ENGINE — Saartheye ML
+   SPATIAL AUDIO ENGINE — Sartheye ML
    ═══════════════════════════════════════════════════════════ */
 
 let audioCtx = null
@@ -51,6 +51,40 @@ export function playSafePing(pan = 0) {
       panner.disconnect()
     } catch (e) {}
   }, 1500)
+}
+
+/**
+ * Play a very soft ambient ping for stationary SOCIAL nodes
+ */
+export function playAmbientPing(pan = 0) {
+  const ctx = getAudioContext()
+  const now = ctx.currentTime
+
+  const osc = ctx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(440, now)
+
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0, now)
+  gain.gain.linearRampToValueAtTime(0.05, now + 0.1) // Much softer
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5)
+
+  const panner = ctx.createStereoPanner()
+  panner.pan.setValueAtTime(clampPan(pan), now)
+
+  osc.connect(gain)
+  gain.connect(panner)
+  panner.connect(ctx.destination)
+
+  osc.start(now)
+  osc.stop(now + 1.6)
+
+  setTimeout(() => {
+    try {
+      gain.disconnect()
+      panner.disconnect()
+    } catch (e) {}
+  }, 2000)
 }
 
 /**
