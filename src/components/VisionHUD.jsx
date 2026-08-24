@@ -93,6 +93,7 @@ function drawCenterReticle(ctx, cx, cy) {
 export default function VisionHUD({ 
   audioEnabled, 
   contextMode,
+  setContextMode,
   onToggleAudio,
   onStopDemo 
 }) {
@@ -102,6 +103,7 @@ export default function VisionHUD({
   
   const [cameraActive, setCameraActive] = useState(false)
   const [modelLoaded, setModelLoaded] = useState(false)
+  const [isAutoMode, setIsAutoMode] = useState(true)
   
   const modelRef = useRef(null)
   const animRef = useRef(null)
@@ -112,6 +114,7 @@ export default function VisionHUD({
   
   // Velocity Engine Cache
   const frameHistoryRef = useRef([])
+  const stationaryFramesRef = useRef(0)
   
   // Handle explicit exit
   const handleExit = () => {
@@ -280,6 +283,23 @@ export default function VisionHUD({
             let isSocial = false
             const isCentral = Math.sqrt(Math.pow(cx - objCx, 2) + Math.pow(cy - objCy, 2)) < (Math.min(w, h) * 0.25)
             
+            // AUTO CONTEXT SWITCHING
+            if (isAutoMode && contextMode !== 'STRESS TEST') {
+              if (i === 0) { // Primary tracked object
+                if (scaleDelta < 0.02 && pred.class === 'person') {
+                  stationaryFramesRef.current++
+                  if (stationaryFramesRef.current > 15 && contextMode !== 'SOCIAL') {
+                    setContextMode('SOCIAL')
+                  }
+                } else if (scaleDelta > 0.04 || pred.class !== 'person') {
+                  stationaryFramesRef.current = 0
+                  if (contextMode !== 'OUTDOOR') {
+                    setContextMode('OUTDOOR')
+                  }
+                }
+              }
+            }
+            
             if (contextMode === 'STRESS TEST') {
               isHazard = true
               if (i === 0) velocityStr = "+1.8m/s (SIM)"
@@ -392,7 +412,7 @@ export default function VisionHUD({
       }
       setHazardTone(false)
     }
-  }, [modelLoaded, cameraActive, audioEnabled, contextMode])
+  }, [modelLoaded, cameraActive, audioEnabled, contextMode, isAutoMode, setContextMode])
 
   return (
     <div
@@ -415,6 +435,38 @@ export default function VisionHUD({
           <span className="text-[10px] font-bold tracking-[0.15em] text-[var(--color-ink)]">
             {cameraActive ? 'CAMERA LIVE' : 'INITIALIZING'}
           </span>
+        </div>
+      </div>
+
+      {/* ── TOP-RIGHT CONTROLS ── */}
+      <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-3">
+        {/* Auto Switcher Toggle */}
+        <button 
+          onClick={() => setIsAutoMode(!isAutoMode)}
+          className={`px-4 py-2 rounded-full border border-[var(--color-hairline)] backdrop-blur-md text-[10px] font-bold tracking-[0.1em] transition-all shadow-lg outline-none cursor-pointer flex items-center gap-2 ${isAutoMode ? 'bg-[var(--color-sage)] text-white' : 'bg-[var(--color-paper)]/90 text-[var(--color-ink)]'}`}
+        >
+          <span className={`w-2 h-2 rounded-full ${isAutoMode ? 'bg-white shadow-[0_0_8px_white]' : 'bg-[var(--color-muted)]'}`} />
+          AUTO SENSE: {isAutoMode ? 'ON' : 'OFF'}
+        </button>
+        
+        {/* Mode Switcher */}
+        <div className="flex bg-[var(--color-paper)]/90 backdrop-blur-md p-1 rounded-full border border-[var(--color-hairline)] items-center shadow-lg">
+          {['OUTDOOR', 'SOCIAL', 'STRESS TEST'].map((mode) => (
+            <button
+              key={mode}
+              onClick={() => {
+                if (isAutoMode) setIsAutoMode(false) // Disable auto on manual override
+                setContextMode(mode)
+              }}
+              className={`px-3 py-1.5 rounded-full font-mono text-[9px] tracking-widest uppercase transition-all duration-300 outline-none cursor-pointer ${
+                contextMode === mode 
+                  ? 'bg-[var(--color-ink)] text-[var(--color-paper)] shadow-sm font-bold' 
+                  : 'text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
         </div>
       </div>
 

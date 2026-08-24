@@ -68,19 +68,22 @@ export default function LandingPage({
                   onClick={() => setContextMode(mode)}
                   className={`px-4 py-1.5 md:px-[1vw] md:py-[0.4vw] rounded-full font-mono text-[9px] sm:text-[10px] md:text-[0.7vw] tracking-widest uppercase transition-all duration-300 outline-none cursor-pointer ${
                     contextMode === mode 
-                      ? 'bg-[var(--color-sage)] text-white shadow-sm font-bold' 
+                      ? (mode === 'SOCIAL' ? 'bg-[#0E4D3A] text-white shadow-sm font-bold' : mode === 'STRESS TEST' ? 'bg-[#D32F2F] text-white shadow-sm font-bold' : 'bg-[var(--color-sage)] text-white shadow-sm font-bold')
                       : 'text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
                   }`}
                 >
                   {mode}
                 </button>
               ))}
-              <div 
+            </div>
+
+            <div 
               onClick={() => setIsAboutOpen(true)}
               className="font-mono text-xs md:text-[0.85vw] font-bold tracking-widest text-[var(--color-ink)] uppercase cursor-pointer hover:opacity-70 transition-opacity ml-[1vw]"
             >
               ABOUT
             </div>
+            
             <div className="flex items-center gap-4 md:gap-[1vw]">
               <a 
                 href="https://github.com/MaybeSomeone-arc18/saartheye-ai" 
@@ -105,9 +108,6 @@ export default function LandingPage({
                 </svg>
               </a>
             </div>
-            </div>
-
-            
           </div>
         </header>
       </div>
@@ -119,7 +119,7 @@ export default function LandingPage({
           background: contextMode === 'OUTDOOR' 
                         ? 'radial-gradient(circle at 50% 0%, rgba(46,71,128,0.08), transparent 60%)' 
                     : contextMode === 'SOCIAL'
-                        ? 'radial-gradient(circle at 50% 0%, rgba(0,255,204,0.15), transparent 60%)' 
+                        ? 'radial-gradient(circle at 50% 0%, rgba(14,77,58,0.15), transparent 60%)' 
                         : 'radial-gradient(circle at 50% 0%, rgba(211,47,47,0.12), transparent 60%)' 
         }}
       />
@@ -130,6 +130,7 @@ export default function LandingPage({
           <VisionHUD 
             audioEnabled={audioEnabled}
             contextMode={contextMode}
+            setContextMode={setContextMode}
             onToggleAudio={onToggleAudio}
             onStopDemo={() => setIsHUDActive(false)}
           />
@@ -180,9 +181,9 @@ export default function LandingPage({
               
               {/* Mode Explainer Box Desktop */}
               <div className="flex flex-col gap-[0.8cqi] border-l-[3px] pl-[1.5cqi] text-left transition-all duration-500 ease-out mx-auto w-full"
-                   style={{ borderColor: contextMode === 'SOCIAL' ? '#00FFCC' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
+                   style={{ borderColor: contextMode === 'SOCIAL' ? '#0E4D3A' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
                 <div className="font-mono text-[0.8cqi] font-bold tracking-widest uppercase transition-colors duration-500"
-                     style={{ color: contextMode === 'SOCIAL' ? '#00FFCC' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
+                     style={{ color: contextMode === 'SOCIAL' ? '#0E4D3A' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
                   MODE // {contextMode}
                 </div>
                 <p className="font-sans text-[1.1cqi] text-[var(--color-ink)]/70 leading-relaxed transition-opacity duration-300">
@@ -300,7 +301,7 @@ export default function LandingPage({
               onClick={() => setContextMode(mode)}
               className={`px-3 py-2 sm:px-4 rounded-full font-mono text-[9px] sm:text-[10px] tracking-widest uppercase transition-all duration-300 outline-none cursor-pointer whitespace-nowrap flex-shrink-0 ${
                 contextMode === mode 
-                  ? 'bg-[var(--color-sage)] text-white shadow-sm font-bold' 
+                  ? (mode === 'SOCIAL' ? 'bg-[#0E4D3A] text-white shadow-sm font-bold' : mode === 'STRESS TEST' ? 'bg-[#D32F2F] text-white shadow-sm font-bold' : 'bg-[var(--color-sage)] text-white shadow-sm font-bold')
                   : 'text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
               }`}
             >
@@ -324,9 +325,9 @@ export default function LandingPage({
           
           {/* Mode Explainer Box Mobile */}
           <div className="flex flex-col gap-2 border-l-[3px] pl-4 text-left transition-all duration-500 ease-out mx-auto w-full"
-               style={{ borderColor: contextMode === 'SOCIAL' ? '#00FFCC' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
+               style={{ borderColor: contextMode === 'SOCIAL' ? '#0E4D3A' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
             <div className="font-mono text-[10px] font-bold tracking-widest uppercase transition-colors duration-500"
-                 style={{ color: contextMode === 'SOCIAL' ? '#00FFCC' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
+                 style={{ color: contextMode === 'SOCIAL' ? '#0E4D3A' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
               MODE // {contextMode}
             </div>
             <p className="font-sans text-[14px] text-[var(--color-ink)]/70 leading-relaxed transition-opacity duration-300">
