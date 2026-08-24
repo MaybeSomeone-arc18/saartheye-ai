@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   SPATIAL AUDIO ENGINE — Sartheye ML
+   SPATIAL AUDIO ENGINE — Saartheye ML
    ═══════════════════════════════════════════════════════════ */
 
 let audioCtx = null

@@ -1,6 +1,6 @@
 <div align="center">
   <br />
-  <h1>सारथि-EYE <br /> SARTHEYE</h1>
+  <h1>सारथि-EYE <br /> SAARTHEYE</h1>
   <p>
     <strong>The Guide That Sees For You.</strong>
   </p>
@@ -12,22 +12,22 @@
 
 ## Architecture of Awareness.
 
-Sartheye represents a paradigm shift in accessibility technology. By leveraging raw silicon sensing and edge AI, it completely bypasses the cloud. No servers, no network latency—just direct, real-time spatial awareness.
+Saartheye represents a paradigm shift in accessibility technology. By leveraging raw silicon sensing and edge AI, it completely bypasses the cloud. No servers, no network latency—just direct, real-time spatial awareness.
 
 ### 01. Silicon Sensing
 Raw camera streams bypass overhead, piping directly into native device memory. Driven by a highly optimized **YOLOv12 INT8** model via TensorFlow.js, it processes environmental data at the speed of thought. Zero frame drops. Zero network calls. 
 
 ### 02. Spatial Echolocation
-We translated 2D bounding boxes into a 3D binaural landscape. By mathematically mapping pixel coordinates to a dynamic Web Audio spatial panner network, Sartheye paints the world in sound. Obstacle proximity alters frequency pitch, while lateral placement translates seamlessly to stereo panning.
+We translated 2D bounding boxes into a 3D binaural landscape. By mathematically mapping pixel coordinates to a dynamic Web Audio spatial panner network, Saartheye paints the world in sound. Obstacle proximity alters frequency pitch, while lateral placement translates seamlessly to stereo panning.
 
 ### 03. Spatial Velocity Vectoring
-Sartheye doesn't just see what's there; it sees where it's going. The custom velocity engine calculates instantaneous `dz/dt` bounding box growth (`Scale_Delta`). Rapidly enlarging objects trigger aggressive, high-frequency collision trajectories, while stationary objects fade into ambient background acoustics.
+Saartheye doesn't just see what's there; it sees where it's going. The custom velocity engine calculates instantaneous `dz/dt` bounding box growth (`Scale_Delta`). Rapidly enlarging objects trigger aggressive, high-frequency collision trajectories, while stationary objects fade into ambient background acoustics.
 
 ---
 
 ## Intelligent Contextual Modes
 
-Sartheye features **Auto Sense**, an intelligent state-machine that autonomously adapts to your environment by tracking the spatial velocity of objects around you. 
+Saartheye features **Auto Sense**, an intelligent state-machine that autonomously adapts to your environment by tracking the spatial velocity of objects around you. 
 
 * **Outdoor Mode:** Standard high-sensitivity navigation. Aggressive alerting on all rapidly approaching objects and nearby collision hazards.
 * **Social Mode:** Smart suppression active. Automatically detects stationary conversation partners and suppresses aggressive alarms, emitting soft, ambient 440Hz pings to maintain gentle spatial awareness.
@@ -48,7 +48,7 @@ Engineered for absolute performance on the modern web.
 
 ## Getting Started
 
-Sartheye requires no installation and runs directly on the edge. To run the development environment locally:
+Saartheye requires no installation and runs directly on the edge. To run the development environment locally:
 
 ```bash
 # Install dependencies

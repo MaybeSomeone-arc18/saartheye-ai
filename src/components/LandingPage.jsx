@@ -57,7 +57,7 @@ export default function LandingPage({
       <div className="sticky top-0 z-50 w-full bg-[var(--color-paper)]/80 backdrop-blur-md hairline border-x-0 border-t-0">
         <header className="h-16 md:h-[4.4vw] flex items-center justify-between px-5 md:px-[2.2vw] w-full mx-auto">
           <div className="font-mono text-xs md:text-[0.9vw] tracking-widest whitespace-nowrap text-[var(--color-ink)] uppercase font-bold flex items-center gap-2 md:gap-[0.5vw]">
-            SARTHEYE <span className="opacity-40">☾</span>
+            SAARTHEYE <span className="opacity-40">☾</span>
           </div>
           <div className="flex items-center gap-4 sm:gap-6 md:gap-[1.6vw] z-50 relative">
             {/* ── CONTEXTUAL SENSITIVITY MODE SWITCHER ── */}
@@ -151,7 +151,7 @@ export default function LandingPage({
             {/* MASSIVE ANIMATED FONT */}
             <h1 className="font-serif text-[7.5cqi] leading-[0.8] mb-[1.5cqi] text-shimmer tracking-tight flex flex-col gap-[0.1em]">
               <span className="font-bold">सारथि-EYE</span>
-              <span>SARTHEYE</span>
+              <span>SAARTHEYE</span>
             </h1>
             <h2 className="font-serif text-[4cqi] leading-[1] text-[var(--color-ink)] mb-[1.5cqi] whitespace-pre-wrap">
               {headline}
@@ -284,7 +284,7 @@ export default function LandingPage({
       <div className="md:hidden flex flex-col items-center px-6 py-12 w-full text-center z-10 relative">
         <h1 className="font-serif text-[3.8rem] leading-[0.8] mb-4 text-shimmer tracking-tight flex flex-col gap-[0.1em]">
           <span className="font-bold">सारथि-EYE</span>
-          <span>SARTHEYE</span>
+          <span>SAARTHEYE</span>
         </h1>
         <h2 className="font-serif text-[var(--color-ink)] text-[2.8rem] leading-[1] mb-6 whitespace-pre-wrap">
           {headline}
@@ -430,7 +430,7 @@ export default function LandingPage({
           </div>
           
           <div className="font-mono text-[10px] md:text-[0.7vw] font-bold tracking-widest uppercase text-[var(--color-muted)] flex gap-8 md:gap-[2vw]">
-            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer" onClick={() => setIsAboutOpen(true)}>SARTHEYE v1.0.0</span>
+            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer" onClick={() => setIsAboutOpen(true)}>SAARTHEYE v1.0.0</span>
             <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer">2026</span>
           </div>
         </footer>
@@ -454,7 +454,7 @@ export default function LandingPage({
                 Architectural Manifesto
               </h1>
               <h2 className="font-serif text-5xl md:text-7xl leading-[1.1] text-[var(--color-ink)]">
-                SARTHEYE <br className="hidden md:block" /> (सारथि-EYE)
+                SAARTHEYE <br className="hidden md:block" /> (सारथि-EYE)
               </h2>
             </header>
 
@@ -470,7 +470,7 @@ export default function LandingPage({
                     The charioteer concept of invisible spatial guidance.
                   </h4>
                   <p className="font-sans text-[15px] md:text-[17px] text-[var(--color-ink)]/80 leading-relaxed">
-                    In ancient epics, a <em>Saarthi</em> (सारथि) is the ultimate guide—a charioteer who sees the battlefield clearly, anticipating hazards before they materialize, and steering the hero to safety. We architected Sartheye around this exact philosophy. It isn't a passive camera; it is an active, invisible sensory organ that interprets physical space and whispers actionable guidance into your ears, turning a smartphone into a cognitive spatial shield.
+                    In ancient epics, a <em>Saarthi</em> (सारथि) is the ultimate guide—a charioteer who sees the battlefield clearly, anticipating hazards before they materialize, and steering the hero to safety. We architected Saartheye around this exact philosophy. It isn't a passive camera; it is an active, invisible sensory organ that interprets physical space and whispers actionable guidance into your ears, turning a smartphone into a cognitive spatial shield.
                   </p>
                 </div>
               </section>
