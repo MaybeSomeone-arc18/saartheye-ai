@@ -357,6 +357,17 @@
 /* ══════════════════════════════════
    SCROLLBAR
    ══════════════════════════════════ */
-::-webkit-scrollbar { width: 4px; }
+html {
+  scrollbar-color: var(--color-sage) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 255, 204, 0.4); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--color-sage); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink); }
+
+@keyframes sheen {
+  0% { transform: translateX(-100%); }
+  50%, 100% { transform: translateX(100%); }
+}

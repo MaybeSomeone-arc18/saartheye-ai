@@ -3,6 +3,7 @@ import useScramble from '../hooks/useScramble'
 import VisionHUD from './VisionHUD'
 import FieldCanvas from './FieldCanvas'
 import iqooBg from '../assets/iqoo-bg.svg'
+import ModalGraphics from './ModalGraphics'
 
 export default function LandingPage({ 
   audioEnabled,
@@ -12,6 +13,7 @@ export default function LandingPage({
 }) {
   const headline = useScramble("The Guide\nThat Sees\nFor You")
   const [isHUDActive, setIsHUDActive] = useState(false)
+  const [isAboutOpen, setIsAboutOpen] = useState(false)
 
   // Standard interactive 3D box component to render inline
   const renderInlineDemo = () => (
@@ -57,8 +59,37 @@ export default function LandingPage({
           <div className="font-mono text-xs md:text-[13px] tracking-widest whitespace-nowrap text-[var(--color-ink)] uppercase font-bold flex items-center gap-2">
             SAARTHEYE <span className="opacity-40">☾</span>
           </div>
-          <div className="font-mono text-xs font-bold tracking-widest text-[var(--color-ink)] uppercase">
-            ABOUT
+          <div className="flex items-center gap-6">
+            <div 
+              onClick={() => setIsAboutOpen(true)}
+              className="font-mono text-xs font-bold tracking-widest text-[var(--color-ink)] uppercase cursor-pointer hover:opacity-70 transition-opacity"
+            >
+              ABOUT
+            </div>
+            <div className="flex items-center gap-4">
+              <a 
+                href="https://github.com/MaybeSomeone-arc18/saartheye-ai" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[var(--color-ink)] hover:opacity-70 transition-opacity flex items-center"
+                aria-label="GitHub Repository"
+              >
+                <svg height="22" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="22" fill="currentColor">
+                  <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+                </svg>
+              </a>
+              <a 
+                href="https://www.linkedin.com/in/sanskar-kharya-614301310/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[var(--color-ink)] hover:opacity-70 transition-opacity flex items-center"
+                aria-label="LinkedIn Profile"
+              >
+                <svg height="22" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="22" fill="currentColor">
+                  <path d="M14.82 0H1.18A1.17 1.17 0 000 1.15v13.69A1.17 1.17 0 001.18 16h13.64A1.17 1.17 0 0016 14.85V1.15A1.17 1.17 0 0014.82 0zM4.74 13.68H2.36V6h2.38zM3.55 4.96a1.38 1.38 0 110-2.76 1.38 1.38 0 010 2.76zM13.68 13.68h-2.38V9.96c0-.89-.02-2.02-1.23-2.02-1.23 0-1.42.96-1.42 1.96v3.78H6.26V6h2.28v1.05h.03c.32-.6 1.09-1.23 2.25-1.23 2.4 0 2.85 1.58 2.85 3.64v4.22z"></path>
+                </svg>
+              </a>
+            </div>
           </div>
         </header>
       </div>
@@ -88,8 +119,9 @@ export default function LandingPage({
           {/* Left Text */}
           <div className="w-[45%] flex flex-col items-start text-left pt-[2cqi]">
             {/* MASSIVE ANIMATED FONT */}
-            <h1 className="font-serif text-[7.5cqi] leading-[0.8] mb-[1.5cqi] text-shimmer tracking-tight">
-              SAARTHEYE
+            <h1 className="font-serif text-[7.5cqi] leading-[0.8] mb-[1.5cqi] text-shimmer tracking-tight flex flex-col gap-[0.1em]">
+              <span className="font-bold">सारथि-EYE</span>
+              <span>SAARTHEYE</span>
             </h1>
             <h2 className="font-serif text-[4cqi] leading-[1] text-[var(--color-ink)] mb-[1.5cqi] whitespace-pre-wrap">
               {headline}
@@ -105,7 +137,7 @@ export default function LandingPage({
                 Launch the demo
               </button>
               <div className="font-mono text-[0.9cqi] text-[var(--color-muted)] font-medium">
-                Open source · MIT · 100% on-device
+                100% on-device
               </div>
             </div>
           </div>
@@ -206,8 +238,9 @@ export default function LandingPage({
           MOBILE FALLBACK LAYOUT (VERTICAL STACK)
           ════════════════════════════════════════ */}
       <div className="md:hidden flex flex-col items-center px-6 py-12 w-full text-center z-10 relative">
-        <h1 className="font-serif text-[3.8rem] leading-[0.8] mb-4 text-shimmer tracking-tight">
-          SAARTHEYE
+        <h1 className="font-serif text-[3.8rem] leading-[0.8] mb-4 text-shimmer tracking-tight flex flex-col gap-[0.1em]">
+          <span className="font-bold">सारथि-EYE</span>
+          <span>SAARTHEYE</span>
         </h1>
         <h2 className="font-serif text-[var(--color-ink)] text-[2.8rem] leading-[1] mb-6 whitespace-pre-wrap">
           {headline}
@@ -316,13 +349,110 @@ export default function LandingPage({
           </div>
           
           <div className="font-mono text-[10px] font-bold tracking-widest uppercase text-[var(--color-muted)] flex gap-8">
-            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer">SAARTHEYE v1.0.0</span>
-            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer">MIT License</span>
+            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer" onClick={() => setIsAboutOpen(true)}>SAARTHEYE v1.0.0</span>
             <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer">2026</span>
           </div>
         </footer>
       </div>
     </div>
+      
+      {/* ── FULLSCREEN ABOUT MODAL ── */}
+      {isAboutOpen && (
+        <div className="fixed inset-0 z-[200] bg-[var(--color-paper)] flex flex-col overflow-y-auto animate-in fade-in duration-300">
+          <ModalGraphics />
+          <div className="w-full max-w-4xl mx-auto px-6 py-12 md:py-24 flex flex-col flex-1 relative z-10">
+            <button 
+              onClick={() => setIsAboutOpen(false)}
+              className="absolute top-6 right-6 md:top-12 md:right-8 text-[var(--color-ink)] hover:opacity-60 transition-opacity font-mono text-[10px] tracking-widest uppercase font-bold"
+            >
+              [ CLOSE ]
+            </button>
+            
+            <header className="mb-16 md:mb-24 mt-8 md:mt-0">
+              <h1 className="font-mono text-[11px] md:text-sm tracking-[0.2em] font-bold text-[var(--color-sage)] uppercase mb-4">
+                Architectural Manifesto
+              </h1>
+              <h2 className="font-serif text-5xl md:text-7xl leading-[1.1] text-[var(--color-ink)]">
+                SAARTHEYE <br className="hidden md:block" /> (सारथि-EYE)
+              </h2>
+            </header>
+
+            <div className="flex flex-col gap-16 md:gap-24 mb-24">
+              <section className="flex flex-col md:flex-row gap-6 md:gap-16">
+                <div className="md:w-1/3">
+                  <h3 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase border-t border-[var(--color-hairline)] pt-4">
+                    01 // Philosophy
+                  </h3>
+                </div>
+                <div className="md:w-2/3">
+                  <h4 className="font-serif text-2xl md:text-3xl text-[var(--color-ink)] mb-4">
+                    The charioteer concept of invisible spatial guidance.
+                  </h4>
+                  <p className="font-sans text-[15px] md:text-[17px] text-[var(--color-ink)]/80 leading-relaxed">
+                    In ancient epics, a <em>Saarthi</em> (सारथि) is the ultimate guide—a charioteer who sees the battlefield clearly, anticipating hazards before they materialize, and steering the hero to safety. We architected Saartheye around this exact philosophy. It isn't a passive camera; it is an active, invisible sensory organ that interprets physical space and whispers actionable guidance into your ears, turning a smartphone into a cognitive spatial shield.
+                  </p>
+                </div>
+              </section>
+
+              <section className="flex flex-col md:flex-row gap-6 md:gap-16">
+                <div className="md:w-1/3">
+                  <h3 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase border-t border-[var(--color-hairline)] pt-4">
+                    02 // Architecture
+                  </h3>
+                </div>
+                <div className="md:w-2/3">
+                  <h4 className="font-serif text-2xl md:text-3xl text-[var(--color-ink)] mb-4">
+                    Why On-Device Silicon Wins.
+                  </h4>
+                  <p className="font-sans text-[15px] md:text-[17px] text-[var(--color-ink)]/80 leading-relaxed mb-6">
+                    Cloud-based vision APIs are brittle. They require persistent 5G connections and cost hundreds of milliseconds in round-trip latency. When you're navigating a busy intersection, a 1,200ms delay is the difference between safety and collision.
+                  </p>
+                  <ul className="space-y-4 font-mono text-[11px] text-[var(--color-ink)]/70 uppercase tracking-wide">
+                    <li className="flex items-center gap-3">
+                      <span className="text-[var(--color-sage)]">●</span> 11.4ms NPU speed vs 1,200ms Cloud latency
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span className="text-[var(--color-sage)]">●</span> 100% Air-gapped isolation
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span className="text-[var(--color-sage)]">●</span> 0 Bytes privacy footprint
+                    </li>
+                  </ul>
+                </div>
+              </section>
+
+              <section className="flex flex-col md:flex-row gap-6 md:gap-16">
+                <div className="md:w-1/3">
+                  <h3 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase border-t border-[var(--color-hairline)] pt-4">
+                    03 // Hardware Stack
+                  </h3>
+                </div>
+                <div className="md:w-2/3">
+                  <h4 className="font-serif text-2xl md:text-3xl text-[var(--color-ink)] mb-4">
+                    Forged for the Hexagon NPU.
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+                    <div className="border border-[var(--color-hairline)] bg-[var(--color-paper)] p-6 rounded-2xl">
+                      <div className="font-mono text-[10px] text-[var(--color-muted)] font-bold tracking-widest uppercase mb-2">Compute Core</div>
+                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">Qualcomm Snapdragon 8 Gen 3 HTP</div>
+                    </div>
+                    <div className="border border-[var(--color-hairline)] bg-[var(--color-paper)] p-6 rounded-2xl">
+                      <div className="font-mono text-[10px] text-[var(--color-muted)] font-bold tracking-widest uppercase mb-2">Inference Engine</div>
+                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">LiteRT QNN Delegate</div>
+                    </div>
+                    <div className="border border-[var(--color-hairline)] bg-[var(--color-paper)] p-6 rounded-2xl sm:col-span-2">
+                      <div className="font-mono text-[10px] text-[var(--color-muted)] font-bold tracking-widest uppercase mb-2">Memory Pipeline</div>
+                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">Zero-Copy C++ NDK Buffer Pipeline</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            
+
+          </div>
+        </div>
+      )}
       
     </div>
   )
