@@ -141,7 +141,7 @@ export default function LandingPage({
           DESKTOP SVG MAPPED LAYOUT
           ════════════════════════════════════════ */}
       {/* ── DESKTOP & TABLET LAYOUT (SVG Mapped) ── */}
-      <div className="hidden md:block relative w-full mx-auto aspect-[1440/2880] @container" 
+      <div className="relative w-full mx-auto aspect-[1440/2880] @container" 
            style={{ backgroundImage: `url(${iqooBg})`, backgroundSize: '100% 100%' }}>
         
         {/* HERO (TOP SPLIT SCREEN IN SVG DOME) */}
@@ -197,7 +197,7 @@ export default function LandingPage({
         </div>
 
         {/* 01 SILICON SENSING (RIGHT) */}
-        <div className="absolute top-[32%] left-[75%] w-[18%] flex flex-col text-left z-10">
+        <div className="absolute top-[35%] left-[75%] w-[18%] flex flex-col text-left z-10">
           <div className="font-serif text-[4cqi] text-[var(--color-sage)] leading-none mb-[0.5cqi]">01</div>
           <h3 className="font-sans text-[1.5cqi] font-medium text-[var(--color-ink)] mb-[1cqi]">Silicon Sensing</h3>
           <p className="font-sans text-[1cqi] text-[var(--color-ink)]/80 leading-snug">
@@ -210,7 +210,7 @@ export default function LandingPage({
           <div className="font-serif text-[4cqi] text-[var(--color-sage)] leading-none mb-[0.5cqi]">02</div>
           <h3 className="font-sans text-[1.5cqi] font-medium text-[var(--color-ink)] mb-[1cqi]">On-Device Inference</h3>
           <p className="font-sans text-[1cqi] text-[var(--color-ink)]/80 leading-snug">
-            Quantized vision models run in parallel directly on the NPU. Real-time spatial hazard classification in under 15ms.
+            Designed to run quantized models on the Hexagon NPU, targeting sub-15ms.
           </p>
         </div>
 
@@ -223,15 +223,20 @@ export default function LandingPage({
           </p>
         </div>
 
+        {/* TARGET PERFORMANCE HEADER */}
+        <div className="absolute top-[65.5%] left-1/2 -translate-x-1/2 w-[75%] z-10 text-center flex flex-col items-center">
+          <h3 className="font-mono text-[1.2cqi] font-bold tracking-widest text-[var(--color-sage)] uppercase mb-[0.5cqi]">Target on-device performance — Snapdragon Hexagon NPU</h3>
+          <p className="font-sans text-[1cqi] text-[var(--color-ink)]/70">Projected for the native build. This web prototype runs TensorFlow.js + Web Audio in the browser.</p>
+        </div>
+
         {/* 2x2 METRICS ARRAY (CENTER) */}
-        {/* 2x2 METRICS ARRAY (CENTER) */}
-        <div className="absolute top-[71%] left-1/2 -translate-x-1/2 w-[65%] z-10 grid grid-cols-2 gap-[1px] bg-[var(--color-hairline)] overflow-hidden rounded-[2cqi] shadow-sm border border-[var(--color-hairline)]">
+        <div className="absolute top-[71%] left-1/2 -translate-x-1/2 w-[68%] z-10 grid grid-cols-2 gap-[1px] bg-[var(--color-hairline)] overflow-hidden rounded-[2cqi] shadow-sm border border-[var(--color-hairline)]">
           {/* Card 1: Latency */}
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
             <h4 className="font-mono text-[0.8cqi] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-[1cqi]">Latency</h4>
             <div className="flex flex-col gap-[0.2cqi] mb-[1cqi]">
-              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">11.4 ms <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Local NPU</span></div>
-              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">1,200+ ms <span className="font-sans text-[0.8cqi]">Network delay</span></div>
+              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">Target: ~11ms <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">on-NPU</span></div>
+              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">~1,200ms <span className="font-sans text-[0.8cqi]">cloud</span></div>
             </div>
             <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Sub-frame hazard classification faster than human blink rate.</p>
           </div>
@@ -251,7 +256,7 @@ export default function LandingPage({
               <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">0 Bytes Sent <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Local RAM</span></div>
               <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">Continuous Stream <span className="font-sans text-[0.8cqi]">Cloud feed</span></div>
             </div>
-            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Visual data exists in memory for 11ms, then vanishes forever.</p>
+            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Frames are processed in local memory and never leave the device.</p>
           </div>
           {/* Card 4: Cost */}
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
@@ -265,7 +270,7 @@ export default function LandingPage({
         </div>
 
         {/* CTA (CENTER BOTTOM) */}
-        <div className="absolute top-[88%] left-1/2 -translate-x-1/2 flex flex-col items-center w-full z-10">
+        <div className="absolute top-[89%] left-1/2 -translate-x-1/2 flex flex-col items-center w-full z-10">
           <h2 className="font-serif text-[3.5cqi] text-[var(--color-ink)] mb-[1.5cqi] text-center leading-tight">
             Uncompromising mobility,<br/>executed locally on silicon.
           </h2>
@@ -278,121 +283,7 @@ export default function LandingPage({
         </div>
       </div>
 
-      {/* ════════════════════════════════════════
-          MOBILE FALLBACK LAYOUT (VERTICAL STACK)
-          ════════════════════════════════════════ */}
-      <div className="md:hidden flex flex-col items-center px-6 py-12 w-full text-center z-10 relative">
-        <h1 className="font-serif text-[3.8rem] leading-[0.8] mb-4 text-shimmer tracking-tight flex flex-col gap-[0.1em]">
-          <span className="font-bold">सारथि-EYE</span>
-          <span>SAARTHEYE</span>
-        </h1>
-        <h2 className="font-serif text-[var(--color-ink)] text-[2.8rem] leading-[1] mb-6 whitespace-pre-wrap">
-          {headline}
-        </h2>
-        <p className="font-sans text-[var(--color-ink)]/85 text-[17px] leading-[1.6] mb-8">
-          An on-device navigation companion, running entirely on your device for real-time vision and 3D spatial audio.
-        </p>
-        
-        {/* ── MOBILE CONTEXTUAL SENSITIVITY MODE SWITCHER ── */}
-        <div className="flex bg-[var(--color-ink)]/5 p-1.5 rounded-full border border-[var(--color-hairline)] items-center mb-8 mx-auto w-fit max-w-full overflow-x-auto no-scrollbar shadow-inner">
-          {['OUTDOOR', 'SOCIAL', 'STRESS TEST'].map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setContextMode(mode)}
-              className={`px-3 py-2 sm:px-4 rounded-full font-mono text-[9px] sm:text-[10px] tracking-widest uppercase transition-all duration-300 outline-none cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                contextMode === mode 
-                  ? (mode === 'SOCIAL' ? 'bg-[#0E4D3A] text-white shadow-sm font-bold' : mode === 'STRESS TEST' ? 'bg-[#D32F2F] text-white shadow-sm font-bold' : 'bg-[var(--color-sage)] text-white shadow-sm font-bold')
-                  : 'text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
 
-        <button 
-          onClick={() => setIsHUDActive(true)}
-          className="bg-[var(--color-sage)] text-white px-8 h-[52px] rounded-full font-sans font-medium text-[16px] mb-8 shadow-lg"
-        >
-          Launch the demo
-        </button>
-
-        {renderInlineDemo()}
-        
-        <div className="mt-4 text-center w-full max-w-[600px] mx-auto px-4 py-4 rounded-2xl bg-[var(--color-paper)]/40 backdrop-blur-md">
-          <div className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-1">Live on-device vision HUD</div>
-          <div className="font-sans text-[12px] leading-relaxed text-[var(--color-ink)]/75 mb-4">Functional web prototype (TF.js + Web Audio).</div>
-          
-          {/* Mode Explainer Box Mobile */}
-          <div className="flex flex-col gap-2 border-l-[3px] pl-4 text-left transition-all duration-500 ease-out mx-auto w-full"
-               style={{ borderColor: contextMode === 'SOCIAL' ? '#0E4D3A' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
-            <div className="font-mono text-[10px] font-bold tracking-widest uppercase transition-colors duration-500"
-                 style={{ color: contextMode === 'SOCIAL' ? '#0E4D3A' : contextMode === 'STRESS TEST' ? '#D32F2F' : 'var(--color-sage)' }}>
-              MODE // {contextMode}
-            </div>
-            <p className="font-sans text-[14px] text-[var(--color-ink)]/70 leading-relaxed transition-opacity duration-300">
-              {contextMode === 'OUTDOOR' && 'Standard high-sensitivity navigation. Alerts on all rapidly approaching objects and nearby collision hazards.'}
-              {contextMode === 'SOCIAL' && 'Smart suppression active. Ignores stationary conversation partners. Emits soft ambient pings to maintain spatial awareness.'}
-              {contextMode === 'STRESS TEST' && 'Simulated emergency override. Forces a rapidly approaching vector to demonstrate critical collision feedback loops.'}
-            </p>
-          </div>
-        </div>
-
-        <div className="w-full mt-16 flex flex-col gap-12 bg-white/50 backdrop-blur p-8 rounded-[2rem] shadow-sm text-left">
-          <div className="flex flex-col">
-            <div className="font-serif text-5xl text-[var(--color-sage)] mb-2">01</div>
-            <h3 className="font-sans text-xl text-[var(--color-ink)] font-bold mb-1">Silicon Sensing</h3>
-            <p className="font-sans text-[15px] text-[var(--color-ink)]/80">Raw camera streams bypass overhead, piping directly into native memory. Zero frame drops, zero network calls.</p>
-          </div>
-          <div className="flex flex-col">
-            <div className="font-serif text-5xl text-[var(--color-sage)] mb-2">02</div>
-            <h3 className="font-sans text-xl text-[var(--color-ink)] font-bold mb-1">On-Device Inference</h3>
-            <p className="font-sans text-[15px] text-[var(--color-ink)]/80">Quantized vision models run in parallel directly on the NPU. Real-time spatial hazard classification in under 15ms.</p>
-          </div>
-          <div className="flex flex-col">
-            <div className="font-serif text-5xl text-[var(--color-sage)] mb-2">03</div>
-            <h3 className="font-sans text-xl text-[var(--color-ink)] font-bold mb-1">Acoustic Projection</h3>
-            <p className="font-sans text-[15px] text-[var(--color-ink)]/80">Spatial vectors map to 3D audio and dynamic haptics. Hear obstacles precisely where they exist in physical space.</p>
-          </div>
-        </div>
-
-        <div className="w-full mt-12 bg-[var(--color-paper)]/80 backdrop-blur rounded-[2rem] shadow-sm flex flex-col overflow-hidden text-left border border-[var(--color-hairline)]">
-          <div className="flex flex-col p-6 border-b border-[var(--color-hairline)] hover:bg-[var(--color-paper)] transition-colors">
-            <h4 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-3">Latency</h4>
-            <div className="font-serif text-[22px] text-[var(--color-sage)] leading-none mb-1">11.4 ms <span className="font-sans text-[12px] text-[var(--color-ink)]">Local NPU</span></div>
-            <div className="font-serif text-[18px] text-[var(--color-muted)] opacity-60 mb-3">1,200+ ms <span className="font-sans text-[12px]">Network delay</span></div>
-            <p className="font-sans text-[13px] text-[var(--color-ink)]/80 leading-snug">Sub-frame hazard classification faster than human blink rate.</p>
-          </div>
-          <div className="flex flex-col p-6 border-b border-[var(--color-hairline)] hover:bg-[var(--color-paper)] transition-colors">
-            <h4 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-3">Isolation</h4>
-            <div className="font-serif text-[22px] text-[var(--color-sage)] leading-none mb-1">100% Air-Gapped <span className="font-sans text-[12px] text-[var(--color-ink)]">Airplane mode</span></div>
-            <div className="font-serif text-[18px] text-[var(--color-muted)] opacity-60 mb-3">5G/Wi-Fi Required <span className="font-sans text-[12px]">Fails in dead zones</span></div>
-            <p className="font-sans text-[13px] text-[var(--color-ink)]/80 leading-snug">Uncompromising mobility in basements, underground transit, and rural dead zones.</p>
-          </div>
-          <div className="flex flex-col p-6 border-b border-[var(--color-hairline)] hover:bg-[var(--color-paper)] transition-colors">
-            <h4 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-3">Privacy</h4>
-            <div className="font-serif text-[22px] text-[var(--color-sage)] leading-none mb-1">0 Bytes Sent <span className="font-sans text-[12px] text-[var(--color-ink)]">Local RAM</span></div>
-            <div className="font-serif text-[18px] text-[var(--color-muted)] opacity-60 mb-3">Continuous Stream <span className="font-sans text-[12px]">Cloud feed</span></div>
-            <p className="font-sans text-[13px] text-[var(--color-ink)]/80 leading-snug">Visual data exists in memory for 11ms, then vanishes forever.</p>
-          </div>
-          <div className="flex flex-col p-6 hover:bg-[var(--color-paper)] transition-colors">
-            <h4 className="font-mono text-[10px] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-3">Operating Cost</h4>
-            <div className="font-serif text-[22px] text-[var(--color-sage)] leading-none mb-1">$0 Server Cost <span className="font-sans text-[12px] text-[var(--color-ink)]">Local silicon</span></div>
-            <div className="font-serif text-[18px] text-[var(--color-muted)] opacity-60 mb-3">Token Billing <span className="font-sans text-[12px]">API overhead</span></div>
-            <p className="font-sans text-[13px] text-[var(--color-ink)]/80 leading-snug">Zero recurring API costs, zero cloud compute infrastructure.</p>
-          </div>
-        </div>
-
-        <h2 className="font-serif text-[2.5rem] text-[var(--color-ink)] mt-20 mb-8 leading-tight">
-          Uncompromising mobility, executed locally on silicon.
-        </h2>
-        <button 
-          onClick={() => setIsHUDActive(true)}
-          className="bg-[var(--color-sage)] text-white px-10 h-[52px] rounded-full font-sans font-medium text-[16px] shadow-lg"
-        >
-          Launch the demo
-        </button>
-      </div>
 
       {/* ── FOOTER CONTAINER ── */}
       <div className="w-full relative z-20 flex flex-col md:-mt-[8vw]">
@@ -418,7 +309,7 @@ export default function LandingPage({
           </div>
         </div>
 
-        <footer className="w-full mx-auto py-8 md:py-[2vw] px-5 md:px-[2.2vw] flex flex-col sm:flex-row items-center justify-between gap-6 md:gap-[1.5vw]">
+        <footer className="w-full mx-auto py-8 md:py-[2vw] px-5 md:px-[2.2vw] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-[1.5vw]">
           <div className="flex items-center gap-4 md:gap-[1vw]">
             <div className="relative flex items-center justify-center w-8 h-8 md:w-[2.2vw] md:h-[2.2vw]">
               <div className="absolute inset-0 border-2 md:border-[0.15vw] border-dashed border-[var(--color-sage)]/40 rounded-full animate-spin-slow"></div>
@@ -490,7 +381,7 @@ export default function LandingPage({
                   </p>
                   <ul className="space-y-4 font-mono text-[11px] text-[var(--color-ink)]/70 uppercase tracking-wide">
                     <li className="flex items-center gap-3">
-                      <span className="text-[var(--color-sage)]">●</span> 11.4ms NPU speed vs 1,200ms Cloud latency
+                      <span className="text-[var(--color-sage)]">●</span> Target: ~11ms NPU speed vs ~1,200ms Cloud latency
                     </li>
                     <li className="flex items-center gap-3">
                       <span className="text-[var(--color-sage)]">●</span> 100% Air-gapped isolation
