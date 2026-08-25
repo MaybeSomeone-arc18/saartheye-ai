@@ -8,6 +8,21 @@ import {
   vibrateHazard
 } from '../utils/spatialAudio'
 
+// Global model cache to preload and prevent re-download/re-compile delays
+let globalModelPromise = null;
+function preloadModel() {
+  if (!globalModelPromise) {
+    globalModelPromise = (async () => {
+      await tf.setBackend('webgl');
+      await tf.ready();
+      await new Promise(resolve => setTimeout(resolve, 500)); // Delay slightly to let page finish initial paint
+      return await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    })();
+  }
+  return globalModelPromise;
+}
+preloadModel().catch(console.error); // Kick off immediately in background
+
 /* ═══════════════════════════════════════════════════
    VISION HUD — ML LIVE SPATIAL ENGINE
    ═══════════════════════════════════════════════════ */
@@ -134,8 +149,7 @@ export default function VisionHUD({
     let isMounted = true
     async function loadModel() {
       try {
-        await tf.ready()
-        const model = await cocoSsd.load({ base: 'lite_mobilenet_v2' })
+        const model = await preloadModel()
         if (isMounted) {
           modelRef.current = model
           setModelLoaded(true)
@@ -174,24 +188,22 @@ export default function VisionHUD({
     }
   }, [])
 
-  /* ── ML Detection Loop ── */
+  /* ── ML Decoupled Detection & Render Loops ── */
   useEffect(() => {
     if (!modelLoaded || !cameraActive) return
+    let isMounted = true
     
     const video = videoRef.current
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     const dpr = window.devicePixelRatio || 1
     
-    let isDetecting = false
+    let latestRenderData = []
+    let inferenceTimer = null
     
-    const detect = async () => {
-      if (!video || !modelRef.current || video.readyState !== 4) {
-        animRef.current = requestAnimationFrame(detect)
-        return
-      }
-      
-      const now = Date.now()
+    // --- 1. RENDER LOOP (60 FPS UI Sync) ---
+    const render = () => {
+      if (!isMounted) return
       
       const rect = containerRef.current.getBoundingClientRect()
       const w = rect.width
@@ -205,211 +217,226 @@ export default function VisionHUD({
       
       ctx.clearRect(0, 0, w, h)
       
-      const vw = video.videoWidth
-      const vh = video.videoHeight
-      const ca = w / h
-      const va = vw / vh
-      
-      let scale = 1, offsetX = 0, offsetY = 0
-      if (ca > va) {
-        scale = w / vw
-        offsetY = (h - (vh * scale)) / 2
-      } else {
-        scale = h / vh
-        offsetX = (w - (vw * scale)) / 2
-      }
-      
-      const cx = w / 2
-      const cy = h / 2
-      
       // Grid
       ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)'
       ctx.lineWidth = 0.5
       for (let gx = 0; gx < w; gx += 60) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke() }
       for (let gy = 0; gy < h; gy += 60) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke() }
       
+      const cx = w / 2
+      const cy = h / 2
       drawCenterReticle(ctx, cx, cy)
       
-      if (!isDetecting) {
-        isDetecting = true
-        try {
-          const predictions = await modelRef.current.detect(video)
+      const now = Date.now()
+      
+      latestRenderData.forEach(item => {
+        drawBoundingBox(ctx, item.bx, item.by, item.bw, item.bh, item.color, 4)
+        drawLabelBadge(ctx, item.labelText, item.bx, item.by, item.bw, item.color, item.isHazard)
+        if (item.isHazard) {
+          const t = now * 0.005
+          const alpha = 0.5 + Math.sin(t) * 0.5
+          drawTrajectoryLine(ctx, cx, cy, item.objCx, item.objCy, item.color, alpha)
+        } else {
+          ctx.strokeStyle = `rgba(46, 71, 128, 0.4)`
+          ctx.lineWidth = 1
+          ctx.setLineDash([4, 6])
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(item.objCx, item.objCy); ctx.stroke()
+          ctx.setLineDash([])
+        }
+      })
+      
+      animRef.current = requestAnimationFrame(render)
+    }
+    
+    // --- 2. INFERENCE LOOP (Throttled Background Task) ---
+    const infer = async () => {
+      if (!isMounted) return
+      if (!video || !modelRef.current || video.readyState !== 4) {
+        inferenceTimer = setTimeout(infer, 100)
+        return
+      }
+      
+      try {
+        const predictions = await modelRef.current.detect(video)
+        if (!isMounted) return
+        
+        const rect = containerRef.current.getBoundingClientRect()
+        const w = rect.width
+        const h = rect.height
+        
+        const vw = video.videoWidth
+        const vh = video.videoHeight
+        const ca = w / h
+        const va = vw / vh
+        
+        let scale = 1, offsetX = 0, offsetY = 0
+        if (ca > va) {
+          scale = w / vw
+          offsetY = (h - (vh * scale)) / 2
+        } else {
+          scale = h / vh
+          offsetX = (w - (vw * scale)) / 2
+        }
+        
+        const cx = w / 2
+        const cy = h / 2
+        
+        let hazardCount = 0
+        let safeCount = 0
+        let primaryHazardPan = 0
+        let primarySafePan = 0
+        let maxHazardCoverage = 0
+        let maxSafeCoverage = 0
+        
+        const newRenderData = []
+        const now = Date.now()
+        
+        predictions.forEach((pred, i) => {
+          if (pred.score < 0.5) return
           
-          let hazardCount = 0
-          let safeCount = 0
-          let primaryHazardPan = 0
-          let primarySafePan = 0
-          let maxHazardCoverage = 0
-          let maxSafeCoverage = 0
+          const [origX, origY, origW, origH] = pred.bbox
           
-          predictions.forEach((pred, i) => {
-            if (pred.score < 0.5) return
-            
-            const [origX, origY, origW, origH] = pred.bbox
-            
-            // Strictly constrain bounding box to screen edges
-            let bx = Math.max(0, origX * scale + offsetX)
-            let by = Math.max(0, origY * scale + offsetY)
-            let bw = Math.min(w - bx, origW * scale)
-            let bh = Math.min(h - by, origH * scale)
-            
-            // Ignore tiny ghost boxes from edge clamping
-            if (bw < 20 || bh < 20) return
-            
-            const currentArea = bw * bh
-            const coverage = currentArea / (w * h)
-            const objCx = bx + bw / 2
-            const objCy = by + bh / 2
-            const objPan = ((objCx / w) - 0.5) * 2
-            
-            // VELOCITY ENGINE (dz/dt estimation)
-            let scaleDelta = 0
-            let velocityStr = "0.0m/s"
-            
-            if (i === 0) {
-              const history = frameHistoryRef.current
-              if (history.length > 0) {
-                const oldest = history[0]
-                scaleDelta = (currentArea - oldest.area) / oldest.area
-                const vel = scaleDelta * 10
-                velocityStr = (vel > 0 ? "+" : "") + vel.toFixed(1) + "m/s"
-              }
-              history.push({ area: currentArea, timestamp: now })
-              if (history.length > 10) history.shift()
+          let bx = Math.max(0, origX * scale + offsetX)
+          let by = Math.max(0, origY * scale + offsetY)
+          let bw = Math.min(w - bx, origW * scale)
+          let bh = Math.min(h - by, origH * scale)
+          
+          if (bw < 20 || bh < 20) return
+          
+          const currentArea = bw * bh
+          const coverage = currentArea / (w * h)
+          const objCx = bx + bw / 2
+          const objCy = by + bh / 2
+          const objPan = ((objCx / w) - 0.5) * 2
+          
+          let scaleDelta = 0
+          let velocityStr = "0.0m/s"
+          
+          if (i === 0) {
+            const history = frameHistoryRef.current
+            if (history.length > 0) {
+              const oldest = history[0]
+              scaleDelta = (currentArea - oldest.area) / oldest.area
+              const vel = scaleDelta * 10
+              velocityStr = (vel > 0 ? "+" : "") + vel.toFixed(1) + "m/s"
             }
-            
-            // CLASSIFICATION LOGIC
-            let isHazard = false
-            let isSocial = false
-            const isCentral = Math.sqrt(Math.pow(cx - objCx, 2) + Math.pow(cy - objCy, 2)) < (Math.min(w, h) * 0.25)
-            
-            // AUTO CONTEXT SWITCHING
-            if (isAutoMode && contextMode !== 'STRESS TEST') {
-              if (i === 0) { // Primary tracked object
-                if (scaleDelta < 0.02 && pred.class === 'person') {
-                  stationaryFramesRef.current++
-                  if (stationaryFramesRef.current > 15 && contextMode !== 'SOCIAL') {
-                    setContextMode('SOCIAL')
-                  }
-                } else if (scaleDelta > 0.04 || pred.class !== 'person') {
-                  stationaryFramesRef.current = 0
-                  if (contextMode !== 'OUTDOOR') {
-                    setContextMode('OUTDOOR')
-                  }
+            history.push({ area: currentArea, timestamp: now })
+            if (history.length > 10) history.shift()
+          }
+          
+          let isHazard = false
+          let isSocial = false
+          const isCentral = Math.sqrt(Math.pow(cx - objCx, 2) + Math.pow(cy - objCy, 2)) < (Math.min(w, h) * 0.25)
+          
+          if (isAutoMode && contextMode !== 'STRESS TEST') {
+            if (i === 0) { // Primary tracked object
+              if (scaleDelta < 0.02 && pred.class === 'person') {
+                stationaryFramesRef.current++
+                if (stationaryFramesRef.current > 15 && contextMode !== 'SOCIAL') {
+                  setContextMode('SOCIAL')
+                }
+              } else if (scaleDelta > 0.04 || pred.class !== 'person') {
+                stationaryFramesRef.current = 0
+                if (contextMode !== 'OUTDOOR') {
+                  setContextMode('OUTDOOR')
                 }
               }
             }
-            
-            if (contextMode === 'STRESS TEST') {
+          }
+          
+          if (contextMode === 'STRESS TEST') {
+            isHazard = true
+            if (i === 0) velocityStr = "+1.8m/s (SIM)"
+          } else if (contextMode === 'SOCIAL') {
+            if (i === 0 && scaleDelta > 0.08) {
               isHazard = true
-              if (i === 0) velocityStr = "+1.8m/s (SIM)"
-            } else if (contextMode === 'SOCIAL') {
-              if (i === 0 && scaleDelta > 0.08) {
-                isHazard = true
-              } else if (pred.class === 'person') {
-                isSocial = true
-              }
-            } else {
-              // OUTDOOR
-              if (coverage >= 0.25 || isCentral || scaleDelta > 0.08) {
-                isHazard = true
-              }
+            } else if (pred.class === 'person') {
+              isSocial = true
             }
-            
-            if (isHazard) {
-              hazardCount++
-              if (coverage > maxHazardCoverage) {
-                maxHazardCoverage = coverage
-                primaryHazardPan = objPan
-              }
-            } else {
-              safeCount++
-              if (coverage > maxSafeCoverage) {
-                maxSafeCoverage = coverage
-                primarySafePan = objPan
-              }
+          } else {
+            // OUTDOOR
+            if (coverage >= 0.25 || isCentral || scaleDelta > 0.08) {
+              isHazard = true
             }
-            
-            const color = isHazard ? '#D32F2F' : 'var(--color-sage)'
-            
-            // Box (thick corners)
-            drawBoundingBox(ctx, bx, by, bw, bh, color, 4)
-            
-            // Dynamic Label
-            let labelText = ""
-            if (isSocial) {
-              labelText = `[YOLOv12] CONVERSATION PARTNER (STATIONARY) • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
-            } else if (isHazard) {
-              labelText = `[WARNING] CLOSING APPROACH VECTOR • Vel: ${i === 0 ? velocityStr : '+High'}`
-            } else {
-              labelText = `[YOLOv12 INT8] ${pred.class.toUpperCase()} • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
-            }
-            drawLabelBadge(ctx, labelText, bx, by, bw, color, isHazard)
-            
-            // Vector trajectory
-            if (isHazard) {
-              const t = now * 0.005
-              const alpha = 0.5 + Math.sin(t) * 0.5
-              drawTrajectoryLine(ctx, cx, cy, objCx, objCy, color, alpha)
-            } else {
-              ctx.strokeStyle = `rgba(46, 71, 128, 0.4)` // var(--color-sage) alpha
-              ctx.lineWidth = 1
-              ctx.setLineDash([4, 6])
-              ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(objCx, objCy); ctx.stroke()
-              ctx.setLineDash([])
-            }
-          })
+          }
           
-          /* ── Audio & Pan Dispatch ── */
-          let activePan = 0
-          if (hazardCount > 0) activePan = primaryHazardPan
-          else if (safeCount > 0) activePan = primarySafePan
-          
-          if (audioEnabled) {
-            if (hazardCount > 0) {
-              setHazardTone(true, primaryHazardPan)
-              if (now - lastHazardVibeRef.current > 1500) {
-                vibrateHazard()
-                lastHazardVibeRef.current = now
-              }
-            } else {
-              setHazardTone(false)
+          if (isHazard) {
+            hazardCount++
+            if (coverage > maxHazardCoverage) {
+              maxHazardCoverage = coverage
+              primaryHazardPan = objPan
             }
-            
-            const pingInterval = contextMode === 'SOCIAL' ? 6000 : 1500
-            if (safeCount > 0 && hazardCount === 0 && now - lastSafePingRef.current > pingInterval) {
-              if (contextMode === 'SOCIAL') {
-                playAmbientPing(primarySafePan)
-              } else {
-                playSafePing(primarySafePan)
-              }
-              lastSafePingRef.current = now
+          } else {
+            safeCount++
+            if (coverage > maxSafeCoverage) {
+              maxSafeCoverage = coverage
+              primarySafePan = objPan
+            }
+          }
+          
+          const color = isHazard ? '#D32F2F' : 'var(--color-sage)'
+          
+          let labelText = ""
+          if (isSocial) {
+            labelText = `[YOLOv12] CONVERSATION PARTNER (STATIONARY) • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
+          } else if (isHazard) {
+            labelText = `[WARNING] CLOSING APPROACH VECTOR • Vel: ${i === 0 ? velocityStr : '+High'}`
+          } else {
+            labelText = `[YOLOv12 INT8] ${pred.class.toUpperCase()} • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
+          }
+          
+          newRenderData.push({ bx, by, bw, bh, color, labelText, isHazard, objCx, objCy })
+        })
+        
+        latestRenderData = newRenderData
+        
+        /* ── Audio & Pan Dispatch ── */
+        let activePan = 0
+        if (hazardCount > 0) activePan = primaryHazardPan
+        else if (safeCount > 0) activePan = primarySafePan
+        
+        if (audioEnabled) {
+          if (hazardCount > 0) {
+            setHazardTone(true, primaryHazardPan)
+            if (now - lastHazardVibeRef.current > 1500) {
+              vibrateHazard()
+              lastHazardVibeRef.current = now
             }
           } else {
             setHazardTone(false)
           }
           
-          window.dispatchEvent(new CustomEvent('spatial-pan-live', { 
-            detail: { pan: activePan, active: (hazardCount > 0 || safeCount > 0), isHazard: hazardCount > 0 } 
-          }))
-          
-        } catch (err) {
-          console.error(err)
-        } finally {
-          isDetecting = false
+          const pingInterval = contextMode === 'SOCIAL' ? 6000 : 1500
+          if (safeCount > 0 && hazardCount === 0 && now - lastSafePingRef.current > pingInterval) {
+            if (contextMode === 'SOCIAL') {
+              playAmbientPing(primarySafePan)
+            } else {
+              playSafePing(primarySafePan)
+            }
+            lastSafePingRef.current = now
+          }
+        } else {
+          setHazardTone(false)
         }
+        
+        window.dispatchEvent(new CustomEvent('spatial-pan-live', { 
+          detail: { pan: activePan, active: (hazardCount > 0 || safeCount > 0), isHazard: hazardCount > 0 } 
+        }))
+        
+      } catch (err) {
+        console.error(err)
       }
       
-      animRef.current = requestAnimationFrame(detect)
+      inferenceTimer = setTimeout(infer, 120) // Give main thread 120ms to breathe
     }
     
-    detect()
+    animRef.current = requestAnimationFrame(render)
+    infer()
     
     return () => {
-      if (animRef.current) {
-        cancelAnimationFrame(animRef.current)
-        animRef.current = null
-      }
+      isMounted = false
+      if (animRef.current) cancelAnimationFrame(animRef.current)
+      if (inferenceTimer) clearTimeout(inferenceTimer)
       setHazardTone(false)
     }
   }, [modelLoaded, cameraActive, audioEnabled, contextMode, isAutoMode, setContextMode])
