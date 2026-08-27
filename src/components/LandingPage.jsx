@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import useScramble from '../hooks/useScramble'
 import VisionHUD from './VisionHUD'
 import FieldCanvas from './FieldCanvas'
-import iqooBg from '../assets/iqoo-bg.svg'
+import iqooBg from '../assets/iqoo-bg.webp'
 import ModalGraphics from './ModalGraphics'
 
 export default function LandingPage({ 
