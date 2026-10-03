@@ -26,7 +26,7 @@ if (typeof document === 'undefined' && typeof self !== 'undefined') {
       } else if (data.type === 'detect') {
         const begin=performance.now();
         try {
-          const predictions=await detector.detect(data.frame,12,0.5);
+          const predictions=await detector.detect(data.frame,20,0.5);
           self.postMessage({type:'result',predictions,duration:performance.now()-begin});
         } finally { data.frame.close(); }
       }
