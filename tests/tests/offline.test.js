@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import { readFile, stat } from 'node:fs/promises';
+test('offline model manifest references existing nonempty shards',async()=>{const m=JSON.parse(await readFile('public/models/coco/model.json','utf8'));for(const g of m.weightsManifest)for(const p of g.paths)assert.ok((await stat(`public/models/coco/${p}`)).size>0);});
+test('manifest has install icons and standalone mode',async()=>{const m=JSON.parse(await readFile('public/manifest.webmanifest','utf8'));assert.equal(m.display,'standalone');for(const n of [192,512]){const i=m.icons.find(i=>i.sizes===`${n}x${n}`);assert.ok(i);assert.ok((await stat(`public${i.src}`)).size>0);}});
