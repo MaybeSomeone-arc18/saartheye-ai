@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/fetch-model.js && vite build && node scripts/build-sw.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node scripts/fetch-model.js && node --test tests/*.test.js"
   },
   "dependencies": {
     "@tensorflow-models/coco-ssd": "^2.2.3",
