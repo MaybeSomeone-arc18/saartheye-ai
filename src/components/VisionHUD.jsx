@@ -43,7 +43,9 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         ctx.lineWidth=2;ctx.font='12px monospace';
         for(const t of objects){
           const [x,y,w,h]=t.bbox;const color=t.approaching?'#D32F2F':'#2E4780';
-          ctx.strokeStyle=color;ctx.strokeRect(x*scale+ox,y*scale+oy,w*scale,h*scale);
+          ctx.strokeStyle=color;
+          const bx=x*scale+ox,by=y*scale+oy,bw=w*scale,bh=h*scale,l=Math.min(24,bw/3,bh/3);
+          ctx.beginPath();for(const [cx,cy,sx,sy] of [[bx,by,1,1],[bx+bw,by,-1,1],[bx,by+bh,1,-1],[bx+bw,by+bh,-1,-1]]){ctx.moveTo(cx+sx*l,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx,cy+sy*l);}ctx.stroke();
           const label=`${t.class} #${t.id} ${t.approaching?'growing':t.stablePerson?'stable':'detected'}`;
           const tx=Math.max(4,x*scale+ox),ty=Math.max(20,y*scale+oy);
           ctx.fillStyle='#F7F4EE';ctx.fillRect(tx-2,ty-17,ctx.measureText(label).width+8,22);
