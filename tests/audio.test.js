@@ -28,3 +28,16 @@ test('speech is local-only, rate limited and cancels before new hazard',()=>{
   c.cue({kind:'none'});assert.equal(cancels,3);
   assert.equal(createSpeechController({getVoices:()=>[{localService:false}]},U).available(),false);
 });
+test('no local English voice plays bundled words and protects the test from empty detections',async()=>{
+  let now=0;const played=[];let cancelled=0,prepared=0;const messages=[];
+  const c=createSpeechController({getVoices:()=>[{lang:'en-US',localService:false}],cancel(){}},class{},()=>now,{prepare:async()=>{prepared++},play:(text,done)=>{played.push({text,done});return()=>{cancelled++}}});
+  c.subscribe(m=>messages.push(m));assert.equal(await c.test(),true);assert.equal(prepared,1);assert.equal(played[0].text,'Left. Right. Ahead. Speech test.');
+  c.cue({kind:'none'});assert.equal(cancelled,0);now=7000;played[0].done();
+  c.cue({kind:'warning',target:{id:2,class:'person',pan:.8}});assert.equal(played[1].text,'person, right, box growing');assert.match(messages.at(-1),/bundled offline words/);
+  c.cancel();assert.equal(cancelled,2);
+});
+test('browser voice error falls back to bundled speech and exposes the error',async()=>{
+  const messages=[],clips=[];const synth={getVoices:()=>[{lang:'en-GB',name:'Local',localService:true}],cancel(){},speak(u){queueMicrotask(()=>u.onerror({error:'synthesis-failed'}))}};
+  const c=createSpeechController(synth,class{},()=>0,{prepare:async()=>{},play:(text)=>{clips.push(text);return()=>{}}});
+  c.subscribe(m=>messages.push(m));await c.test();await new Promise(r=>setTimeout(r,1));assert.equal(clips.length,1);assert.match(messages.at(-1),/synthesis-failed/);c.dispose();
+});
