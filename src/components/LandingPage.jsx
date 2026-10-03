@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import useScramble from '../hooks/useScramble'
 import VisionHUD from './VisionHUD'
 import FieldCanvas from './FieldCanvas'
-import iqooBg from '../assets/iqoo-bg.webp'
+import paperBg from '../assets/iqoo-bg.webp'
 import ModalGraphics from './ModalGraphics'
 
 export default function LandingPage({ 
@@ -133,7 +133,7 @@ export default function LandingPage({
           ════════════════════════════════════════ */}
       {/* ── DESKTOP & TABLET LAYOUT (SVG Mapped) ── */}
       <div className="original-map relative w-full mx-auto aspect-[1440/2880] @container" 
-           style={{ backgroundImage: `url(${iqooBg})`, backgroundSize: '100% 100%' }}>
+           style={{ backgroundImage: `url(${paperBg})`, backgroundSize: '100% 100%' }}>
         
         {/* HERO (TOP SPLIT SCREEN IN SVG DOME) */}
         <div className="absolute top-[4%] left-[2%] w-[96%] flex items-start gap-[4cqi] z-20">
@@ -178,7 +178,7 @@ export default function LandingPage({
                   MODE // {contextMode}
                 </div>
                 <p className="font-sans text-[1.1cqi] text-[var(--color-ink)]/70 leading-relaxed transition-opacity duration-300">
-                  {contextMode === 'OUTDOOR' && 'Matched objects and growing-box warnings. Camera motion can also make boxes grow; no collision prediction.'}
+                  {contextMode === 'OUTDOOR' && 'Collision avoidance is the goal. Current approach/path warnings estimate box growth; camera motion can mislead them.'}
                   {contextMode === 'SOCIAL' && 'Softer stable-person cues, while growing tracks can still warn. Experimental thresholds, not field validated.'}
                   {contextMode === 'STRESS TEST' && 'Simulation only: every detected object warns. Not a measured approach or emergency response.'}
                 </p>
@@ -276,7 +276,6 @@ export default function LandingPage({
 
 
 
-      <p className="review-disclosure">Previously submitted to the Bengaluru city round in August 2026. Pre-existing code must be disclosed; finale reuse depends on organizer rules. Not tested with blind users.</p>
       {/* ── FOOTER CONTAINER ── */}
       <div className="w-full relative z-20 flex flex-col md:-mt-[8vw]">
         {/* Seamless Fade Mask (Desktop) */}
