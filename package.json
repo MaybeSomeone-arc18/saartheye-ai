@@ -15,6 +15,7 @@
     "@tensorflow/tfjs": "^4.22.0",
     "chrome-launcher": "^1.2.1",
     "lucide-react": "^1.33.0",
+    "onnxruntime-web": "^1.23.2",
     "puppeteer-core": "^25.8.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
