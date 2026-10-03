@@ -462,3 +462,4 @@ body:has(.vision-shell) {overflow:hidden}
 }
 .vision-shell>.vision-pan {background:var(--color-paper);border-radius:999px;padding:10px 18px;margin:8px auto;width:calc(100% - 32px)}
 @media(min-width:700px){.vision-shell>.vision-pan{position:absolute;right:16px;top:16px;z-index:10;margin:0;width:180px}}
+.vision-shell>.vision-pan {color:var(--color-ink)}
