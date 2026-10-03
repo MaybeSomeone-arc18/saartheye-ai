@@ -6,7 +6,7 @@ A browser prototype exploring local object detection and spoken object/direction
 
 ## What this branch implements
 
-- React 19, Vite, TensorFlow.js 4.22 and COCO-SSD 2.2.3 (`lite_mobilenet_v2`). Inference uses WebGL where available, with CPU fallback. It does not use YOLO or a phone NPU.
+- React 19, Vite, TensorFlow.js 4.22 and COCO-SSD 2.2.3 (`lite_mobilenet_v2`). Model loading, warm-up and inference run in a dedicated module worker. Transferable ImageBitmap frames keep the UI thread separate. Worker inference uses WebGL where available, with CPU fallback. Worker/ImageBitmap support is required; no blocking main-thread fallback is silently used. It does not use YOLO or a phone NPU.
 - Camera permission and a rear-camera preference, with a 640x480 capture request. The actual resolution is browser/device dependent.
 - Greedy same-class IoU matching, smoothed boxes and timestamped relative image-area growth. Growth is an approach proxy, not physical speed, distance or collision prediction. Warnings need several observations with hysteresis.
 - Rate-limited spoken object and left/right/ahead cues with an installed local Web Speech voice only. Growing-box warnings say "box growing": camera movement can cause these, so they are not confirmed object approach. One utterance at a time, stale queue cancellation, on/off and spoken-direction test. No network-backed voice is selected; offline speech depends on installed voice availability and must be tested. With no local voice, Sound on provides tone fallback.
@@ -14,7 +14,7 @@ A browser prototype exploring local object detection and spoken object/direction
 - Standard and Social modes. Social softens cues for stable matched people while retaining warnings from other growing tracks. Simulated stress mode explicitly warns on every detection and is not measured approach behavior.
 - Optional vibration independent of sound, using the browser Vibration API. API presence does not prove haptics work on a particular phone.
 - Real completed detection rate and rolling p50/p95 inference duration in the HUD. These are not camera-to-sound latency. First-result time includes model/camera startup and user permission time.
-- Visible camera/model errors, retry, sequential inference, stale-output clearing, camera shutdown and large keyboard-accessible controls.
+- Visible camera/model errors, retry, fresh-video-frame sequential inference (no fixed 40ms idle delay), stale-output clearing, camera shutdown and large keyboard-accessible controls.
 
 ## Privacy and offline behavior
 
