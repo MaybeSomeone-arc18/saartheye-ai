@@ -39,7 +39,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
           c.width=Math.round(rect.width*dpr);c.height=Math.round(rect.height*dpr);
         }
         const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,rect.width,rect.height);
-        const scale=Math.min(rect.width/v.videoWidth,rect.height/v.videoHeight);
+        const scale=(getComputedStyle(v).objectFit==='cover'?Math.max:Math.min)(rect.width/v.videoWidth,rect.height/v.videoHeight);
         const ox=(rect.width-v.videoWidth*scale)/2,oy=(rect.height-v.videoHeight*scale)/2;
         ctx.lineWidth=2;ctx.font='12px monospace';
         for(const t of objects){
