@@ -10,6 +10,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   const [loadingMessage,setLoadingMessage]=useState('Requesting camera access...'),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[offline,setOffline]=useState('Checking offline setup...');
   const [scene,setScene]=useState([]);
   const [stats,setStats]=useState(null),[backend,setBackend]=useState(''),[cue,setCue]=useState('Waiting for camera and model');
+  const [modelMode,setModelMode]=useState('light');
   const speech=useRef(null);
   if(speech.current == null)speech.current=createSpeechController(window.speechSynthesis,window.SpeechSynthesisUtterance);
   const [speechEnabled,setSpeechEnabled]=useState(false),[speechMessage,setSpeechMessage]=useState('Checking browser voices. Bundled offline words are available after a tap.');
@@ -114,7 +115,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
           };
           worker.onerror=(event)=>{const error=new Error(event.message||'Model worker failed');reject(error);pendingRequest?.reject(error);};
         });
-        modelPromise.catch(()=>{});worker.postMessage({type:'load'});
+        modelPromise.catch(()=>{});worker.postMessage({type:'load',mode:modelMode});
         stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}},audio:false});
         if(!active){stream.getTracks().forEach(t=>t.stop());return;}
         videoRef.current.srcObject=stream;await videoRef.current.play();
@@ -126,7 +127,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     }
     start();
     return()=>{active=false;worker?.terminate();clearTimeout(timer);clearInterval(watchdog);cancelAnimationFrame(renderFrame);camera?.cancelVideoFrameCallback?.(videoFrame);stream?.getTracks().forEach(t=>t.stop());setHazardTone(false);tracker.reset();};
-  },[attempt]);
+  },[attempt,modelMode]);
   const retry=()=>{setError('');setPhase('loading');setStats(null);setAttempt(a=>a+1);};
   const soundTest=async()=>{
     try {
@@ -141,7 +142,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   };
   const testSpeech=async()=>{setHazardTone(false);await speech.current.test();};
   return <section className="vision-shell" aria-label="Saartheye prototype camera demo">
-    <header className="vision-header"><button onClick={onStopDemo}>STOP DEMO ✕</button><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div></header>
+    <header className="vision-header"><button onClick={onStopDemo}>STOP DEMO ✕</button><div><b>SAARTHEYE</b><p>Local inference {backend&&`· ${backend}`}</p></div></header>
     <p className="vision-caution">Experimental prototype. Not a safety device or a replacement for a cane. Use only in a supervised, clear indoor space.</p>
       <div className="vision-modes" aria-label="Alert mode">{['OUTDOOR','SOCIAL','STRESS TEST'].map(m=><button key={m} aria-pressed={contextMode===m} onClick={()=>setContextMode(m)}>{m}</button>)}</div>
     <div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>L</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>R</span></div>
@@ -150,6 +151,8 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     </div>
     <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p>
       <p className="vision-note" aria-live="off">{scene.length?`${scene.length} objects tracked: ${scene.slice(0,5).map(t=>`${t.name} ${t.direction}${t.risk==='path'?' (path warning)':t.risk==='approach'?' (possible approach)':''}`).join(' · ')}${scene.length>5?' · more boxes shown':''}. Speech summarizes up to two, warnings first.`:'No fresh supported objects. No detection does not mean clear.'}</p>
+      <div className="vision-controls" aria-label="Detector choice">{[['light','Light'],['balanced','Balanced'],['accuracy','Accuracy']].map(([value,label])=><button key={value} aria-pressed={modelMode===value} onClick={()=>{setPhase('loading');setError('');setStats(null);setBackend('');setModelMode(value);}}>{label}</button>)}</div>
+      <p className="vision-note">{modelMode==='accuracy'?'YOLOX-M: larger model, may be slow. Not a phone speed claim.':modelMode==='balanced'?'YOLOX-Tiny: more chair/cup detections in a small photo test; still misses objects.':'COCO-SSD lite: lighter fallback for slow phones.'} First offline setup downloads about 140 MB for all modes. No NPU use.</p>
       <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
       <p className="vision-note audio-diagnostic" role="status">{testMessage || audioMessage}</p>
       <div className="vision-controls"><button aria-pressed={speechEnabled} onClick={toggleSpeech}>Speech {speechEnabled?'on':'off'}</button><button onClick={testSpeech}>Test spoken directions</button></div>
