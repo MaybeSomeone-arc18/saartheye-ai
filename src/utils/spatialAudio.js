@@ -191,10 +191,9 @@ export function vibrateTap() {
 }
 
 export function speechPhrase(selected) {
-  const t = selected.target
-  if (!t) return ''
-  const direction = t.pan < -0.2 ? 'left' : t.pan > 0.2 ? 'right' : 'ahead'
-  return `${t.class}, ${direction}${selected.kind === 'warning' ? (t.riskLevel==='path'?', path warning':', possible approach') : ''}`
+  if(!selected.target)return ''
+  const describe=t=>`${t.class}, ${t.pan<-.2?'left':t.pan>.2?'right':'ahead'}${t.riskLevel==='path'?', path warning':t.riskLevel==='approach'?', possible approach':selected.kind==='warning'&&t===selected.target?', possible approach':''}`
+  return (selected.summary||[selected.target]).slice(0,2).map(describe).join(', ')
 }
 
 // Offline word sprite generated with the unmodified eSpeak CLI. No engine or
