@@ -47,7 +47,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
           ctx.strokeStyle=color;
           const bx=x*scale+ox,by=y*scale+oy,bw=w*scale,bh=h*scale,l=Math.min(24,bw/3,bh/3);
           ctx.beginPath();for(const [cx,cy,sx,sy] of [[bx,by,1,1],[bx+bw,by,-1,1],[bx,by+bh,1,-1],[bx+bw,by+bh,-1,-1]]){ctx.moveTo(cx+sx*l,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx,cy+sy*l);}ctx.stroke();
-          const label=`${t.class} #${t.id} ${t.approaching?'growing':t.stablePerson?'stable':'detected'}`;
+          const label=`${t.class} #${t.id} ${t.riskLevel==='path'?'path warning':t.riskLevel==='approach'?'possible approach':t.stablePerson?'stable':'detected'}`;
           const tx=Math.max(4,x*scale+ox),ty=Math.max(20,y*scale+oy);
           ctx.fillStyle='#F7F4EE';ctx.fillRect(tx-2,ty-17,ctx.measureText(label).width+8,22);
           ctx.fillStyle=color;ctx.fillText(label,tx+2,ty);
@@ -93,7 +93,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
           const span=completions.length>1?(now-completions[0])/1000:0;
           setStats({hz:span?(completions.length-1)/span:0,p50:percentile(durations,.5),p95:percentile(durations,.95),samples:durations.length,startup:firstInference});
           setPan(target?.pan||0);
-          setCue(!target?'No supported objects detected':`${selected.kind==='warning'?'Growing-box warning':selected.kind==='ambient'?'Stable-person cue':'Presence cue'}: ${target.class}`);
+          setCue(!target?'No supported objects detected':`${selected.kind==='warning'?(target.riskLevel==='path'?'Path warning (estimated)':'Possible approach (estimated)'):selected.kind==='ambient'?'Stable-person cue':'Presence cue'}: ${target.class}`);
           lastUi=now;
         }
       }catch(err){clearOutput();fail(`Detection stopped: ${err.message||'unexpected error'}. Retry to restart.`);return;}
@@ -151,7 +151,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
       <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
       <p className="vision-note audio-diagnostic" role="status">{testMessage || audioMessage}</p>
       <div className="vision-controls"><button aria-pressed={speechEnabled} onClick={toggleSpeech}>Speech {speechEnabled?'on':'off'}</button><button onClick={testSpeech}>Test spoken directions</button></div>
-      <p className="vision-note speech-diagnostic" role="status">{speechMessage} Spoken warnings say "box growing", not a measured collision or object approach.</p>
+      <p className="vision-note speech-diagnostic" role="status">{speechMessage} Approach estimates use sustained box growth and frame position, not measured distance or guaranteed collision. Camera motion can mislead them.</p>
 
       {contextMode==='STRESS TEST'&&<p className="vision-caution">SIMULATION: every detected object triggers a warning. Not a real approach measurement.</p>}
       <div className="vision-metrics">{stats?<><span><b>{stats.hz.toFixed(1)}</b> completed detections/s</span><span><b>{Math.round(stats.p50)} / {Math.round(stats.p95)} ms</b> inference p50 / p95</span><span>{stats.hz>0&&stats.hz<3?'Slow device: cues may lag. ':''}{stats.samples} recent samples · first result {(stats.startup/1000).toFixed(1)} s · not end-to-end latency</span></>:<span>Real detection timings appear once the camera is running.</span>}</div>
