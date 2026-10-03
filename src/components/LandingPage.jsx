@@ -238,7 +238,7 @@ export default function LandingPage({
               <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">Cached after setup <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Airplane mode</span></div>
               <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">Phone restart pending <span className="font-sans text-[0.8cqi]">Verify on device</span></div>
             </div>
-            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">App and model cached after online setup. Storage may be evicted. Offline speech depends on installed voice.</p>
+            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">App and model cached after online setup. Storage may be evicted. Bundled spoken words also cache offline.</p>
           </div>
           {/* Card 3: Privacy */}
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
@@ -368,7 +368,7 @@ export default function LandingPage({
                     Why On-Device Silicon Wins.
                   </h4>
                   <p className="font-sans text-[15px] md:text-[17px] text-[var(--color-ink)]/80 leading-relaxed mb-6">
-                    COCO-SSD lite detects trained objects locally. Tracking uses image-box growth, not physical distance or velocity. Speech uses installed local voices only. Offline close/restart and physical audibility still need phone verification.</p>
+                    COCO-SSD lite detects trained objects locally. Tracking uses image-box growth, not physical distance or velocity. Speech uses a local English voice or bundled offline words. Offline close/restart and physical audibility still need phone verification.</p>
                   <ul className="space-y-4 font-mono text-[11px] text-[var(--color-ink)]/70 uppercase tracking-wide">
                     <li className="flex items-center gap-3">
                       <span className="text-[var(--color-sage)]">●</span> 223-228ms NPU speed vs 308-396ms Cloud latency
