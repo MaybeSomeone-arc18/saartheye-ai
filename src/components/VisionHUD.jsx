@@ -143,7 +143,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     <header className="vision-header"><button onClick={onStopDemo}>STOP DEMO ✕</button><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div></header>
     <p className="vision-caution">Experimental prototype. Not a safety device or a replacement for a cane. Use only in a supervised, clear indoor space.</p>
       <div className="vision-modes" aria-label="Alert mode">{['OUTDOOR','SOCIAL','STRESS TEST'].map(m=><button key={m} aria-pressed={contextMode===m} onClick={()=>setContextMode(m)}>{m}</button>)}</div>
-    <div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>LEFT</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>RIGHT</span></div>
+    <div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>L</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>R</span></div>
     <div className="vision-camera"><video ref={videoRef} autoPlay playsInline muted /><canvas ref={canvasRef} aria-hidden="true" />
       {phase!=='ready'&&<div className="vision-message"><h2>{phase==='error'?'Could not start':'Preparing camera and local model'}</h2><p role={error?'alert':'status'}>{error||loadingMessage}</p>{phase==='error'&&<button onClick={retry}>Retry camera and model</button>}</div>}
     </div>
