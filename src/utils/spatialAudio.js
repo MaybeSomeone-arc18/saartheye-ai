@@ -189,3 +189,38 @@ export function vibrateTap() {
     if (navigator.vibrate) navigator.vibrate(30)
   } catch { /* Vibration is optional. */ }
 }
+
+export function speechPhrase(selected) {
+  const t = selected.target
+  if (!t) return ''
+  const direction = t.pan < -0.2 ? 'left' : t.pan > 0.2 ? 'right' : 'ahead'
+  return `${t.class}, ${direction}${selected.kind === 'warning' ? ', box growing' : ''}`
+}
+
+// Local voices only: this feature never chooses a network-backed voice.
+export function createSpeechController(synth, Utterance, clock = () => performance.now()) {
+  let lastAt = -Infinity, lastKey = '', speaking = false, generation = 0
+  const voice = () => synth?.getVoices().find(v => v.localService && /^en\b/i.test(v.lang))
+    || synth?.getVoices().find(v => v.localService)
+  const available = () => Boolean(synth && Utterance && voice())
+  const cancel = () => { generation++; synth?.cancel(); speaking = false }
+  const say = (text, key, urgent = false, force = false) => {
+    if (!available()) return false
+    const now = clock()
+    if (!force && (now-lastAt < (urgent ? 1800 : 4000) || (speaking && (!urgent || key === lastKey)))) return true
+    cancel() // Never queue stale object/direction announcements.
+    const token = generation, u = new Utterance(text)
+    u.voice = voice(); u.lang = u.voice.lang; u.rate = 1.1; u.volume = 1
+    u.onend = u.onerror = () => { if (token === generation) speaking = false }
+    try { synth.speak(u); speaking = true; lastAt = now; lastKey = key; return true }
+    catch { speaking = false; return false }
+  }
+  return { available, cancel,
+    cue(selected) {
+      if (!selected.target) { cancel(); return available() }
+      const text = speechPhrase(selected)
+      return say(text, `${selected.target.id}:${text}`, selected.kind === 'warning')
+    },
+    test() { return say('Left. Right. Ahead. Speech test.', 'test', false, true) },
+  }
+     }
