@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import ModelCompare from './components/ModelCompare'
 import LandingPage from './components/LandingPage'
 import {
   unlockAudio,
@@ -25,6 +26,8 @@ export default function App() {
       setAudioMessage(`Sound could not start: ${error.message}`)
     }
   }, [audioEnabled])
+
+  if(new URLSearchParams(window.location.search).has('compare'))return <ModelCompare />
 
   return (
     <div className="w-full h-dvh">
