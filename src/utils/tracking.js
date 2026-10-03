@@ -56,6 +56,7 @@ export function createTracker(options = {}) {
         match.pan=clamp(((match.bbox[0]+match.bbox[2]/2)/width-.5)*2,-1,1);
         match.coverage=match.area/(width*height);
         match.ageMs=now-match.firstSeen;
+        if(p.presenceOnly){match.approaching=false;match.growth=0;match.hits=0;}
         // Central 40% corridor is a frame-space heuristic, not the user's path.
         const overlap=Math.max(0,Math.min(match.bbox[0]+match.bbox[2],width*.7)-Math.max(match.bbox[0],width*.3));
         match.inCorridor=overlap/Math.max(1,Math.min(match.bbox[2],width*.4))>.5;
@@ -88,4 +89,4 @@ export function percentile(values, percent) {
   if (!values.length) return null;
   const sorted=[...values].sort((a,b)=>a-b);
   return sorted[Math.max(0,Math.ceil(percent*sorted.length)-1)];
-                              }
+                                }
