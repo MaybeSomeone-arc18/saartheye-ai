@@ -12,3 +12,15 @@ test('class change and large box jump start a new track',()=>{const t=createTrac
 test('large central stationary object is not labelled a collision',()=>{const t=createTracker();let r;for(let i=0;i<12;i++)r=t.update([pred('chair',250,300)],i*160,800,600);assert.equal(chooseCue(r).kind,'presence');});
 test('empty scene and low confidence stay quiet',()=>{const t=createTracker();assert.equal(chooseCue(t.update([pred('person',10,100,.1)],0,800,600)).kind,'none');});
 test('slow sequential inference retains a usable area history',()=>{const t=createTracker();let r;for(let i=0;i<10;i++)r=t.update([pred('person',100,100+i*25)],i*1100,800,600);assert.equal(r[0].id,1);assert.ok(r[0].samples>=4);assert.ok(r[0].growth>0);});
+test('sustained central growth raises estimated path severity only after track age',()=>{
+ const t=createTracker();let r;for(let i=0;i<14;i++){const w=70+i*10;r=t.update([{class:'chair',score:.9,bbox:[400-w/2,200-w/2,w,w]}],i*160,800,600);if(i<4)assert.equal(r[0].riskLevel,'none')}
+ assert.equal(r[0].riskLevel,'path');assert.equal(chooseCue(r).kind,'warning');
+});
+test('static translation and alternating box jitter do not create approach warnings',()=>{
+ const t=createTracker();let r;for(let i=0;i<30;i++)r=t.update([pred('person',100+(i%2)*10,100+(i%2)*2)],i*160,800,600);
+ assert.equal(r[0].riskLevel,'none');assert.equal(chooseCue(r).kind,'presence');
+});
+test('similar multi-object expansion suppresses camera-motion-uncertain warnings',()=>{
+ const t=createTracker();let r;for(let i=0;i<12;i++){const w=40+i*4;r=t.update([pred('chair',40,w),pred('person',300,w),pred('car',550,w)],i*160,800,600)}
+ assert.ok(r.every(t=>t.motionUncertain));assert.ok(r.every(t=>t.riskLevel==='none'));assert.equal(chooseCue(r).kind,'presence');
+});
