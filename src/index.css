@@ -445,4 +445,20 @@ body:has(.vision-shell) {overflow:hidden}
  .vision-camera video,.vision-camera canvas{object-fit:contain}
  .vision-dashboard .vision-controls,.vision-dashboard .vision-modes{margin:8px 0}
  .vision-note{font-size:11px}
-     }
+}
+.vision-details {font:11px var(--font-mono);margin-top:8px}.vision-details summary{cursor:pointer}
+.vision-shell>.vision-modes{padding:6px;background:var(--color-paper);border-radius:999px;width:fit-content;margin:12px auto;z-index:10}
+.vision-header{justify-content:flex-start;gap:12px}.vision-header>div{max-width:280px}
+@media(min-width:700px){
+ .vision-shell>.vision-modes{position:absolute;right:16px;top:60px;margin:0}
+ .vision-dashboard{width:min(100% - 32px,850px)!important;max-height:32vh!important;padding:12px 18px}
+ .vision-dashboard .vision-cue{font:12px var(--font-mono);margin-bottom:6px}
+ .vision-dashboard .vision-pan{position:fixed;right:16px;top:16px;max-width:200px;background:var(--color-paper);border-radius:999px;padding:10px 18px;transform:none}
+ .vision-shell .vision-caution{top:105px;max-width:calc(100% - 32px)}
+ .vision-controls{display:inline-flex;margin:6px 12px 6px 0!important}
+ .vision-controls button{min-height:34px;font-size:9px;padding:8px 12px}
+ .audio-diagnostic,.speech-diagnostic{font-size:10px;margin:3px 0}
+ .vision-metrics{padding:6px 0;gap:12px}
+}
+.vision-shell>.vision-pan {background:var(--color-paper);border-radius:999px;padding:10px 18px;margin:8px auto;width:calc(100% - 32px)}
+@media(min-width:700px){.vision-shell>.vision-pan{position:absolute;right:16px;top:16px;z-index:10;margin:0;width:180px}}
