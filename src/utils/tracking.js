@@ -29,7 +29,7 @@ export function createTracker(options = {}) {
         }
         if (!match) {
           match = { id:nextId++, class:p.class, bbox:[...p.bbox], rawArea:area, area,
-            lastSeen:now, samples:0, growth:0, approaching:false, stableSince:null, history:[], hits:0, misses:0 };
+            firstSeen:now, lastSeen:now, samples:0, growth:0, approaching:false, stableSince:null, history:[], hits:0, misses:0 };
           tracks.push(match);
         } else unmatched.delete(match);
         const dt = (now-match.lastSeen)/1000;
@@ -55,8 +55,19 @@ export function createTracker(options = {}) {
           && now-match.stableSince>=cfg.stableMs;
         match.pan=clamp(((match.bbox[0]+match.bbox[2]/2)/width-.5)*2,-1,1);
         match.coverage=match.area/(width*height);
+        match.ageMs=now-match.firstSeen;
+        // Central 40% corridor is a frame-space heuristic, not the user's path.
+        const overlap=Math.max(0,Math.min(match.bbox[0]+match.bbox[2],width*.7)-Math.max(match.bbox[0],width*.3));
+        match.inCorridor=overlap/Math.max(1,Math.min(match.bbox[2],width*.4))>.5;
+        match.riskLevel=match.approaching && match.ageMs>=700 ? (match.inCorridor && match.growth>.8 ? 'path' : 'approach') : 'none';
         return {...match, bbox:[...match.bbox]};
       });
+      // Similar expansion of several tracked boxes may be camera zoom/motion.
+      // Suppress the estimate, but this cannot detect all camera motion.
+      const established=visible.filter(t=>t.samples>=cfg.minSamples && t.ageMs>=700);
+      const expanding=established.filter(t=>t.growth>cfg.enterGrowth);
+      const commonExpansion=expanding.length>=3 && expanding.length/established.length>=.8 && Math.max(...expanding.map(t=>t.growth))-Math.min(...expanding.map(t=>t.growth))<.2;
+      if(commonExpansion)for(const t of visible){t.riskLevel='none';t.motionUncertain=true;}
       // A lost track must earn a fresh history before producing a warning again.
       for (const t of unmatched) { t.history=[]; t.samples=0; t.growth=0; t.hits=0;
         t.misses=0; t.approaching=false; t.stableSince=null; t.stablePerson=false; }
@@ -65,8 +76,8 @@ export function createTracker(options = {}) {
   };
 }
 export function chooseCue(tracks, mode='OUTDOOR') {
-  const alerts=tracks.filter(t => mode==='STRESS TEST' || t.approaching);
-  if (alerts.length) return { kind:'warning', target:alerts.sort((a,b)=>b.growth-a.growth||b.coverage-a.coverage)[0],
+  const alerts=tracks.filter(t => mode==='STRESS TEST' || (t.riskLevel && t.riskLevel!=='none'));
+  if (alerts.length) return { kind:'warning', target:alerts.sort((a,b)=>(b.riskLevel==='path')-(a.riskLevel==='path')||b.growth-a.growth||b.coverage-a.coverage)[0],
     urgency:mode==='STRESS TEST'?0.6:clamp((Math.max(...alerts.map(t=>t.growth))-.4)/1.1,0,1) };
   const target=[...tracks].sort((a,b)=>b.coverage-a.coverage)[0];
   return {kind:target?(mode==='SOCIAL'&&target.stablePerson?'ambient':'presence'):'none',target,urgency:0};
