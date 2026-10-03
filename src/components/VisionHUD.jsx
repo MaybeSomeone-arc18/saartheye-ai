@@ -8,6 +8,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   const output=useRef({audioEnabled,contextMode,haptics:false});
   const [haptics,setHaptics]=useState(false), [phase,setPhase]=useState('loading');
   const [loadingMessage,setLoadingMessage]=useState('Requesting camera access...'),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[offline,setOffline]=useState('Checking offline setup...');
+  const [scene,setScene]=useState([]);
   const [stats,setStats]=useState(null),[backend,setBackend]=useState(''),[cue,setCue]=useState('Waiting for camera and model');
   const speech=useRef(null);
   if(speech.current == null)speech.current=createSpeechController(window.speechSynthesis,window.SpeechSynthesisUtterance);
@@ -29,7 +30,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     const tracker=createTracker();let objects=[],lastPing=0,lastVibration=0,staleMs=1500;
     const durations=[],completions=[];let started=performance.now(),lastUi=0,firstInference=null;
     const fail=(message)=>{if(active){setError(message);setPhase('error');}setHazardTone(false);};
-    const clearOutput=()=>{speech.current.cancel();objects=[];tracker.reset();setHazardTone(false);if(active){setCue('No fresh detections');setPan(0);}};
+    const clearOutput=()=>{speech.current.cancel();objects=[];tracker.reset();setHazardTone(false);if(active){setCue('No fresh detections');setScene([]);setPan(0);}};
     const draw=()=>{
       if(!active)return;
       const v=videoRef.current,c=canvasRef.current;
@@ -92,7 +93,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         if(now-lastUi>350){
           const span=completions.length>1?(now-completions[0])/1000:0;
           setStats({hz:span?(completions.length-1)/span:0,p50:percentile(durations,.5),p95:percentile(durations,.95),samples:durations.length,startup:firstInference});
-          setPan(target?.pan||0);
+          setPan(target?.pan||0);setScene(objects.map(t=>({id:t.id,name:t.class,direction:t.pan<-.2?'left':t.pan>.2?'right':'ahead',risk:t.riskLevel})));
           setCue(!target?'No supported objects detected':`${selected.kind==='warning'?(target.riskLevel==='path'?'Path warning (estimated)':'Possible approach (estimated)'):selected.kind==='ambient'?'Stable-person cue':'Presence cue'}: ${target.class}`);
           lastUi=now;
         }
@@ -148,6 +149,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
       {phase!=='ready'&&<div className="vision-message"><h2>{phase==='error'?'Could not start':'Preparing camera and local model'}</h2><p role={error?'alert':'status'}>{error||loadingMessage}</p>{phase==='error'&&<button onClick={retry}>Retry camera and model</button>}</div>}
     </div>
     <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p>
+      <p className="vision-note" aria-live="off">{scene.length?`${scene.length} objects tracked: ${scene.slice(0,5).map(t=>`${t.name} ${t.direction}${t.risk==='path'?' (path warning)':t.risk==='approach'?' (possible approach)':''}`).join(' · ')}${scene.length>5?' · more boxes shown':''}. Speech summarizes up to two, warnings first.`:'No fresh supported objects. No detection does not mean clear.'}</p>
       <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
       <p className="vision-note audio-diagnostic" role="status">{testMessage || audioMessage}</p>
       <div className="vision-controls"><button aria-pressed={speechEnabled} onClick={toggleSpeech}>Speech {speechEnabled?'on':'off'}</button><button onClick={testSpeech}>Test spoken directions</button></div>
