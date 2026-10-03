@@ -1,583 +1,119 @@
-import { useState, useEffect, useRef } from 'react'
-import * as tf from '@tensorflow/tfjs'
-import * as cocoSsd from '@tensorflow-models/coco-ssd'
-import {
-  playSafePing,
-  playAmbientPing,
-  setHazardTone,
-  vibrateHazard
-} from '../utils/spatialAudio'
+import { useState, useEffect, useRef } from 'react';
+import { loadVisionModel, backendName } from '../utils/model';
+import { createTracker, chooseCue, percentile } from '../utils/tracking';
+import { getAudioContext, playSafePing, playAmbientPing, setHazardTone, vibrateHazard } from '../utils/spatialAudio';
+import { offlineStatus } from '../utils/offline';
 
-// Global model cache to preload and prevent re-download/re-compile delays
-let globalModelPromise = null;
-function preloadModel() {
-  if (!globalModelPromise) {
-    globalModelPromise = (async () => {
-      await tf.setBackend('webgl');
-      await tf.ready();
-      await new Promise(resolve => setTimeout(resolve, 500)); // Delay slightly to let page finish initial paint
-      return await cocoSsd.load({ base: 'lite_mobilenet_v2' });
-    })();
-  }
-  return globalModelPromise;
-}
-preloadModel().catch(console.error); // Kick off immediately in background
-
-/* ═══════════════════════════════════════════════════
-   VISION HUD — ML LIVE SPATIAL ENGINE
-   ═══════════════════════════════════════════════════ */
-
-/* ── CRISP thin corner-bracket reticle ── */
-function drawBoundingBox(ctx, x, y, w, h, color, lineWidth = 4) {
-  const cornerLen = 24
-  ctx.strokeStyle = color
-  ctx.lineWidth = lineWidth
-  ctx.lineCap = 'square'
-
-  // Top-Left
-  ctx.beginPath(); ctx.moveTo(x, y + cornerLen); ctx.lineTo(x, y); ctx.lineTo(x + cornerLen, y); ctx.stroke()
-  // Top-Right
-  ctx.beginPath(); ctx.moveTo(x + w - cornerLen, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + cornerLen); ctx.stroke()
-  // Bottom-Left
-  ctx.beginPath(); ctx.moveTo(x, y + h - cornerLen); ctx.lineTo(x, y + h); ctx.lineTo(x + cornerLen, y + h); ctx.stroke()
-  // Bottom-Right
-  ctx.beginPath(); ctx.moveTo(x + w - cornerLen, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - cornerLen); ctx.stroke()
-}
-
-/* ── COMPACT label badge above bounding box ── */
-function drawLabelBadge(ctx, text, x, y, w, color, isHazard) {
-  ctx.font = 'bold 11px "JetBrains Mono", monospace'
-  const textWidth = ctx.measureText(text).width
-  const badgeH = 22
-  const badgeY = y - badgeH - 6
-  const badgePadX = 8
-  const badgeW = Math.max(w, textWidth + badgePadX * 2)
-
-  // Solid paper/cream glass
-  ctx.fillStyle = 'rgba(247, 244, 238, 0.95)'
-  ctx.strokeStyle = color
-  ctx.lineWidth = 2
-  ctx.beginPath(); ctx.roundRect(x, badgeY, badgeW, badgeH, 3); ctx.fill(); ctx.stroke()
-
-  ctx.fillStyle = color
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  
-  if (isHazard) {
-    const t = Date.now() * 0.005
-    ctx.globalAlpha = 0.5 + Math.sin(t) * 0.5
-    ctx.fillText(text, x + badgePadX, badgeY + badgeH / 2 + 1)
-    ctx.globalAlpha = 1
-  } else {
-    ctx.fillText(text, x + badgePadX, badgeY + badgeH / 2 + 1)
-  }
-}
-
-/* ── Fine 1px Trajectory line ── */
-function drawTrajectoryLine(ctx, x1, y1, x2, y2, color, alpha = 0.8) {
-  ctx.strokeStyle = color
-  ctx.lineWidth = 1
-  ctx.globalAlpha = alpha
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke()
-  ctx.globalAlpha = 1
-}
-
-/* ── BOLD center crosshair ── */
-function drawCenterReticle(ctx, cx, cy) {
-  const size = 18
-  const gap = 6
-  ctx.strokeStyle = '#00FFCC'
-  ctx.lineWidth = 2
-  ctx.lineCap = 'round'
-
-  ctx.beginPath(); ctx.moveTo(cx - size, cy); ctx.lineTo(cx - gap, cy)
-  ctx.moveTo(cx + gap, cy); ctx.lineTo(cx + size, cy); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(cx, cy - size); ctx.lineTo(cx, cy - gap)
-  ctx.moveTo(cx, cy + gap); ctx.lineTo(cx, cy + size); ctx.stroke()
-
-  const dotGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 8)
-  dotGrad.addColorStop(0, 'rgba(0, 255, 204, 0.4)')
-  dotGrad.addColorStop(1, 'rgba(0, 255, 204, 0)')
-  ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2)
-  ctx.fillStyle = dotGrad; ctx.fill()
-
-  ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2)
-  ctx.fillStyle = '#00FFCC'; ctx.fill()
-}
-
-export default function VisionHUD({ 
-  audioEnabled, 
-  contextMode,
-  setContextMode,
-  onToggleAudio,
-  onStopDemo 
-}) {
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
-  const containerRef = useRef(null)
-  
-  const [cameraActive, setCameraActive] = useState(false)
-  const [modelLoaded, setModelLoaded] = useState(false)
-  const [isAutoMode, setIsAutoMode] = useState(true)
-  
-  const modelRef = useRef(null)
-  const animRef = useRef(null)
-  
-  // Audio tracking refs
-  const lastSafePingRef = useRef(0)
-  const lastHazardVibeRef = useRef(0)
-  
-  // Velocity Engine Cache
-  const frameHistoryRef = useRef([])
-  const stationaryFramesRef = useRef(0)
-  
-  // Handle explicit exit
-  const handleExit = () => {
-    if (animRef.current) {
-      cancelAnimationFrame(animRef.current)
-      animRef.current = null
-    }
-    setHazardTone(false)
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(t => t.stop())
-    }
-    onStopDemo()
-  }
-  
-  /* ── Load TensorFlow Model ── */
-  useEffect(() => {
-    let isMounted = true
-    async function loadModel() {
-      try {
-        const model = await preloadModel()
-        if (isMounted) {
-          modelRef.current = model
-          setModelLoaded(true)
+export default function VisionHUD({ audioEnabled, contextMode, setContextMode, onToggleAudio, onStopDemo }) {
+  const videoRef=useRef(null), canvasRef=useRef(null), lastResult=useRef(0);
+  const output=useRef({audioEnabled,contextMode,haptics:false});
+  const [haptics,setHaptics]=useState(false), [phase,setPhase]=useState('loading');
+  const [error,setError]=useState(''),[attempt,setAttempt]=useState(0),[offline,setOffline]=useState('Checking offline setup...');
+  const [stats,setStats]=useState(null),[backend,setBackend]=useState(''),[cue,setCue]=useState('Waiting for camera and model');
+  const [pan,setPan]=useState(0);
+  useEffect(()=>{output.current={audioEnabled,contextMode,haptics};if(!audioEnabled)setHazardTone(false);},[audioEnabled,contextMode,haptics]);
+  useEffect(()=>{
+    let active=true;
+    const check=()=>offlineStatus().then(s=>{if(active)setOffline(s.ready?'Offline assets verified. Browser storage can still be evicted.':s.message);});
+    check();navigator.serviceWorker?.addEventListener('controllerchange',check);
+    return()=>{active=false;navigator.serviceWorker?.removeEventListener('controllerchange',check);};
+  },[]);
+  useEffect(()=>{
+    let active=true,stream,timer,watchdog,renderFrame;
+    const tracker=createTracker();let objects=[],model,lastPing=0,lastVibration=0,staleMs=1500;
+    const durations=[],completions=[];let started=performance.now(),lastUi=0,firstInference=null;
+    const fail=(message)=>{if(active){setError(message);setPhase('error');}setHazardTone(false);};
+    const clearOutput=()=>{objects=[];tracker.reset();setHazardTone(false);if(active){setCue('No fresh detections');setPan(0);}};
+    const draw=()=>{
+      if(!active)return;
+      const v=videoRef.current,c=canvasRef.current;
+      if(v&&c&&v.videoWidth){
+        const rect=c.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+        if(c.width!==Math.round(rect.width*dpr)||c.height!==Math.round(rect.height*dpr)){
+          c.width=Math.round(rect.width*dpr);c.height=Math.round(rect.height*dpr);
         }
-      } catch (err) {
-        console.error("Failed to load model", err)
-      }
-    }
-    loadModel()
-    return () => { isMounted = false }
-  }, [])
-
-  /* ── Init Camera ── */
-  useEffect(() => {
-    let stream = null
-    let isMounted = true
-    async function startCamera() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: 1280, height: 720 },
-          audio: false,
-        })
-        if (isMounted && videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
-          setCameraActive(true)
+        const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,rect.width,rect.height);
+        const scale=Math.min(rect.width/v.videoWidth,rect.height/v.videoHeight);
+        const ox=(rect.width-v.videoWidth*scale)/2,oy=(rect.height-v.videoHeight*scale)/2;
+        ctx.lineWidth=2;ctx.font='14px system-ui';
+        for(const t of objects){
+          const [x,y,w,h]=t.bbox;const color=t.approaching?'#ffb4a6':'#96e7c7';
+          ctx.strokeStyle=color;ctx.strokeRect(x*scale+ox,y*scale+oy,w*scale,h*scale);
+          const label=`${t.class} #${t.id} ${t.approaching?'growing':t.stablePerson?'stable':'detected'}`;
+          const tx=Math.max(4,x*scale+ox),ty=Math.max(20,y*scale+oy);
+          ctx.fillStyle='#111a22';ctx.fillRect(tx-2,ty-17,ctx.measureText(label).width+8,22);
+          ctx.fillStyle=color;ctx.fillText(label,tx+2,ty);
         }
-      } catch (err) {
-        console.error("Camera access failed", err)
       }
-    }
-    startCamera()
-    return () => {
-      isMounted = false
-      if (stream) stream.getTracks().forEach(t => t.stop())
-    }
-  }, [])
-
-  /* ── ML Decoupled Detection & Render Loops ── */
-  useEffect(() => {
-    if (!modelLoaded || !cameraActive) return
-    let isMounted = true
-    
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    const dpr = window.devicePixelRatio || 1
-    
-    let latestRenderData = []
-    let inferenceTimer = null
-    
-    // --- 1. RENDER LOOP (60 FPS UI Sync) ---
-    const render = () => {
-      if (!isMounted) return
-      
-      const rect = containerRef.current.getBoundingClientRect()
-      const w = rect.width
-      const h = rect.height
-      
-      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-        canvas.width = w * dpr
-        canvas.height = h * dpr
-        ctx.scale(dpr, dpr)
-      }
-      
-      ctx.clearRect(0, 0, w, h)
-      
-      // Grid
-      ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)'
-      ctx.lineWidth = 0.5
-      for (let gx = 0; gx < w; gx += 60) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke() }
-      for (let gy = 0; gy < h; gy += 60) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke() }
-      
-      const cx = w / 2
-      const cy = h / 2
-      drawCenterReticle(ctx, cx, cy)
-      
-      const now = Date.now()
-      
-      latestRenderData.forEach(item => {
-        drawBoundingBox(ctx, item.bx, item.by, item.bw, item.bh, item.color, 4)
-        drawLabelBadge(ctx, item.labelText, item.bx, item.by, item.bw, item.color, item.isHazard)
-        if (item.isHazard) {
-          const t = now * 0.005
-          const alpha = 0.5 + Math.sin(t) * 0.5
-          drawTrajectoryLine(ctx, cx, cy, item.objCx, item.objCy, item.color, alpha)
-        } else {
-          ctx.strokeStyle = `rgba(46, 71, 128, 0.4)`
-          ctx.lineWidth = 1
-          ctx.setLineDash([4, 6])
-          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(item.objCx, item.objCy); ctx.stroke()
-          ctx.setLineDash([])
+      renderFrame=requestAnimationFrame(draw);
+    };
+    const infer=async()=>{
+      if(!active)return;
+      if(document.hidden){clearOutput();timer=setTimeout(infer,300);return;}
+      const v=videoRef.current;
+      if(!v||v.readyState<2){timer=setTimeout(infer,100);return;}
+      try{
+        const begin=performance.now();const predictions=await model.detect(v,12,0.5);
+        if(!active)return;
+        const now=performance.now();lastResult.current=now;
+        if(firstInference===null)firstInference=now-started;
+        durations.push(now-begin);completions.push(now);
+        staleMs=Math.min(4000,Math.max(1500,(percentile(durations,.95)||0)*2.5+100));
+        while(durations.length>120)durations.shift();while(completions.length>120)completions.shift();
+        objects=tracker.update(predictions,now,v.videoWidth,v.videoHeight);
+        const mode=output.current.contextMode;const selected=chooseCue(objects,mode);
+        const target=selected.target;
+        if(output.current.audioEnabled){
+          setHazardTone(selected.kind==='warning',target?.pan||0,selected.urgency);
+          const interval=selected.kind==='ambient'?6000:2000;
+          if(target&&selected.kind!=='warning'&&now-lastPing>interval){
+            (selected.kind==='ambient'?playAmbientPing:playSafePing)(target.pan);lastPing=now;
+          }
+        }else setHazardTone(false);
+        if(output.current.haptics&&selected.kind==='warning'&&now-lastVibration>1500){vibrateHazard();lastVibration=now;}
+        if(now-lastUi>350){
+          const span=completions.length>1?(now-completions[0])/1000:0;
+          setStats({hz:span?(completions.length-1)/span:0,p50:percentile(durations,.5),p95:percentile(durations,.95),samples:durations.length,startup:firstInference});
+          setPan(target?.pan||0);
+          setCue(!target?'No supported objects detected':`${selected.kind==='warning'?'Growing-box warning':selected.kind==='ambient'?'Stable-person cue':'Presence cue'}: ${target.class}`);
+          lastUi=now;
         }
-      })
-      
-      animRef.current = requestAnimationFrame(render)
+      }catch(err){clearOutput();fail(`Detection stopped: ${err.message||'unexpected error'}. Retry to restart.`);return;}
+      timer=setTimeout(infer,40); // Sequential detection, no overlapping inference.
+    };
+    async function start(){
+      try{
+        if(!navigator.mediaDevices?.getUserMedia)throw new Error('Camera requires HTTPS and a supported browser.');
+        const modelPromise=loadVisionModel();
+        // Handle model failure while the camera permission dialog is open.
+        modelPromise.catch(()=>{});
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}},audio:false});
+        if(!active){stream.getTracks().forEach(t=>t.stop());return;}
+        videoRef.current.srcObject=stream;await videoRef.current.play();
+        model=await modelPromise;if(!active)return;
+        setBackend(backendName());setPhase('ready');setError('');lastResult.current=performance.now();
+        draw();infer();
+        watchdog=setInterval(()=>{if(active&&performance.now()-lastResult.current>staleMs){clearOutput();}},300);
+      }catch(err){stream?.getTracks().forEach(t=>t.stop());fail(err.name==='NotAllowedError'?'Camera access was denied. Allow the camera in browser settings, then retry.':err.name==='NotFoundError'?'No camera was found. Try Chrome on your phone.':`Could not start: ${err.message||'unknown error'}`);}
     }
-    
-    // --- 2. INFERENCE LOOP (Throttled Background Task) ---
-    const infer = async () => {
-      if (!isMounted) return
-      if (!video || !modelRef.current || video.readyState !== 4) {
-        inferenceTimer = setTimeout(infer, 100)
-        return
-      }
-      
-      try {
-        const predictions = await modelRef.current.detect(video)
-        if (!isMounted) return
-        
-        const rect = containerRef.current.getBoundingClientRect()
-        const w = rect.width
-        const h = rect.height
-        
-        const vw = video.videoWidth
-        const vh = video.videoHeight
-        const ca = w / h
-        const va = vw / vh
-        
-        let scale = 1, offsetX = 0, offsetY = 0
-        if (ca > va) {
-          scale = w / vw
-          offsetY = (h - (vh * scale)) / 2
-        } else {
-          scale = h / vh
-          offsetX = (w - (vw * scale)) / 2
-        }
-        
-        const cx = w / 2
-        const cy = h / 2
-        
-        let hazardCount = 0
-        let safeCount = 0
-        let primaryHazardPan = 0
-        let primarySafePan = 0
-        let maxHazardCoverage = 0
-        let maxSafeCoverage = 0
-        
-        const newRenderData = []
-        const now = Date.now()
-        
-        predictions.forEach((pred, i) => {
-          if (pred.score < 0.5) return
-          
-          const [origX, origY, origW, origH] = pred.bbox
-          
-          let bx = Math.max(0, origX * scale + offsetX)
-          let by = Math.max(0, origY * scale + offsetY)
-          let bw = Math.min(w - bx, origW * scale)
-          let bh = Math.min(h - by, origH * scale)
-          
-          if (bw < 20 || bh < 20) return
-          
-          const currentArea = bw * bh
-          const coverage = currentArea / (w * h)
-          const objCx = bx + bw / 2
-          const objCy = by + bh / 2
-          const objPan = ((objCx / w) - 0.5) * 2
-          
-          let scaleDelta = 0
-          let velocityStr = "0.0m/s"
-          
-          if (i === 0) {
-            const history = frameHistoryRef.current
-            if (history.length > 0) {
-              const oldest = history[0]
-              scaleDelta = (currentArea - oldest.area) / oldest.area
-              const vel = scaleDelta * 10
-              velocityStr = (vel > 0 ? "+" : "") + vel.toFixed(1) + "m/s"
-            }
-            history.push({ area: currentArea, timestamp: now })
-            if (history.length > 10) history.shift()
-          }
-          
-          let isHazard = false
-          let isSocial = false
-          const isCentral = Math.sqrt(Math.pow(cx - objCx, 2) + Math.pow(cy - objCy, 2)) < (Math.min(w, h) * 0.25)
-          
-          if (isAutoMode && contextMode !== 'STRESS TEST') {
-            if (i === 0) { // Primary tracked object
-              if (scaleDelta < 0.02 && pred.class === 'person') {
-                stationaryFramesRef.current++
-                if (stationaryFramesRef.current > 15 && contextMode !== 'SOCIAL') {
-                  setContextMode('SOCIAL')
-                }
-              } else if (scaleDelta > 0.04 || pred.class !== 'person') {
-                stationaryFramesRef.current = 0
-                if (contextMode !== 'OUTDOOR') {
-                  setContextMode('OUTDOOR')
-                }
-              }
-            }
-          }
-          
-          if (contextMode === 'STRESS TEST') {
-            isHazard = true
-            if (i === 0) velocityStr = "+1.8m/s (SIM)"
-          } else if (contextMode === 'SOCIAL') {
-            if (i === 0 && scaleDelta > 0.08) {
-              isHazard = true
-            } else if (pred.class === 'person') {
-              isSocial = true
-            }
-          } else {
-            // OUTDOOR
-            if (coverage >= 0.25 || isCentral || scaleDelta > 0.08) {
-              isHazard = true
-            }
-          }
-          
-          if (isHazard) {
-            hazardCount++
-            if (coverage > maxHazardCoverage) {
-              maxHazardCoverage = coverage
-              primaryHazardPan = objPan
-            }
-          } else {
-            safeCount++
-            if (coverage > maxSafeCoverage) {
-              maxSafeCoverage = coverage
-              primarySafePan = objPan
-            }
-          }
-          
-          const color = isHazard ? '#D32F2F' : 'var(--color-sage)'
-          
-          let labelText = ""
-          if (isSocial) {
-            labelText = `[YOLOv12] CONVERSATION PARTNER (STATIONARY) • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
-          } else if (isHazard) {
-            labelText = `[WARNING] CLOSING APPROACH VECTOR • Vel: ${i === 0 ? velocityStr : '+High'}`
-          } else {
-            labelText = `[YOLOv12 INT8] ${pred.class.toUpperCase()} • Vel: ${i === 0 ? velocityStr : '0.0m/s'}`
-          }
-          
-          newRenderData.push({ bx, by, bw, bh, color, labelText, isHazard, objCx, objCy })
-        })
-        
-        latestRenderData = newRenderData
-        
-        /* ── Audio & Pan Dispatch ── */
-        let activePan = 0
-        if (hazardCount > 0) activePan = primaryHazardPan
-        else if (safeCount > 0) activePan = primarySafePan
-        
-        if (audioEnabled) {
-          if (hazardCount > 0) {
-            setHazardTone(true, primaryHazardPan)
-            if (now - lastHazardVibeRef.current > 1500) {
-              vibrateHazard()
-              lastHazardVibeRef.current = now
-            }
-          } else {
-            setHazardTone(false)
-          }
-          
-          const pingInterval = contextMode === 'SOCIAL' ? 6000 : 1500
-          if (safeCount > 0 && hazardCount === 0 && now - lastSafePingRef.current > pingInterval) {
-            if (contextMode === 'SOCIAL') {
-              playAmbientPing(primarySafePan)
-            } else {
-              playSafePing(primarySafePan)
-            }
-            lastSafePingRef.current = now
-          }
-        } else {
-          setHazardTone(false)
-        }
-        
-        window.dispatchEvent(new CustomEvent('spatial-pan-live', { 
-          detail: { pan: activePan, active: (hazardCount > 0 || safeCount > 0), isHazard: hazardCount > 0 } 
-        }))
-        
-      } catch (err) {
-        console.error(err)
-      }
-      
-      inferenceTimer = setTimeout(infer, 120) // Give main thread 120ms to breathe
-    }
-    
-    animRef.current = requestAnimationFrame(render)
-    infer()
-    
-    return () => {
-      isMounted = false
-      if (animRef.current) cancelAnimationFrame(animRef.current)
-      if (inferenceTimer) clearTimeout(inferenceTimer)
-      setHazardTone(false)
-    }
-  }, [modelLoaded, cameraActive, audioEnabled, contextMode, isAutoMode, setContextMode])
-
-  return (
-    <div
-      ref={containerRef}
-      id="vision-hud"
-      className="anim-fade-in-d1 relative flex-1 w-full h-full bg-black overflow-hidden"
-    >
-      {/* ── TOP-LEFT NAVIGATION ── */}
-      <div className="absolute top-4 left-4 z-50 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <button 
-          onClick={handleExit}
-          className="px-4 py-2 rounded-full border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-md text-[10px] font-bold tracking-[0.1em] text-[var(--color-ink)] hover:bg-[var(--color-paper)] hover:border-[#D32F2F]/50 hover:text-[#D32F2F] transition-all shadow-lg outline-none cursor-pointer"
-        >
-          STOP DEMO ✕
-        </button>
-
-        {/* Camera Status */}
-        <div className={`px-3 py-2 rounded-full border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-md flex items-center gap-2`}>
-          <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-[var(--color-sage)] animate-pulse' : 'bg-[#D32F2F] animate-pulse'}`} />
-          <span className="text-[10px] font-bold tracking-[0.15em] text-[var(--color-ink)]">
-            {cameraActive ? 'CAMERA LIVE' : 'INITIALIZING'}
-          </span>
-        </div>
-      </div>
-
-      {/* ── TOP-RIGHT CONTROLS ── */}
-      <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-3">
-        {/* Auto Switcher Toggle */}
-        <button 
-          onClick={() => setIsAutoMode(!isAutoMode)}
-          className={`px-4 py-2 rounded-full border border-[var(--color-hairline)] backdrop-blur-md text-[10px] font-bold tracking-[0.1em] transition-all shadow-lg outline-none cursor-pointer flex items-center gap-2 ${isAutoMode ? 'bg-[var(--color-sage)] text-white' : 'bg-[var(--color-paper)]/90 text-[var(--color-ink)]'}`}
-        >
-          <span className={`w-2 h-2 rounded-full ${isAutoMode ? 'bg-white shadow-[0_0_8px_white]' : 'bg-[var(--color-muted)]'}`} />
-          AUTO SENSE: {isAutoMode ? 'ON' : 'OFF'}
-        </button>
-        
-        {/* Mode Switcher */}
-        <div className="flex bg-[var(--color-paper)]/90 backdrop-blur-md p-1 rounded-full border border-[var(--color-hairline)] items-center shadow-lg">
-          {['OUTDOOR', 'SOCIAL', 'STRESS TEST'].map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                if (isAutoMode) setIsAutoMode(false) // Disable auto on manual override
-                setContextMode(mode)
-              }}
-              className={`px-3 py-1.5 rounded-full font-mono text-[9px] tracking-widest uppercase transition-all duration-300 outline-none cursor-pointer ${
-                contextMode === mode 
-                  ? 'bg-[var(--color-ink)] text-[var(--color-paper)] shadow-sm font-bold' 
-                  : 'text-[var(--color-ink)]/60 hover:text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <AudioPanBar />
-
-      {!modelLoaded && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--color-paper)]/95 backdrop-blur-xl">
-          <div className="flex flex-col items-center gap-6">
-            <span className="w-8 h-8 rounded-full border-[3px] border-[var(--color-sage)] border-t-transparent animate-spin" />
-            <span className="font-mono text-[12px] font-bold text-[var(--color-sage)] tracking-[0.2em] uppercase">
-              INITIALIZING QUALCOMM NPU ENGINE...
-            </span>
-          </div>
-        </div>
-      )}
-
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
-          cameraActive ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
-
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }} />
-
-      {/* ── FLOATING BOTTOM DOCK ── */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit px-4">
-        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 px-4 py-3 rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-xl shadow-2xl w-full">
-          
-          <button
-            onClick={onToggleAudio}
-            className={`px-5 py-2.5 rounded-full border transition-all font-mono text-[10px] md:text-[11px] font-bold tracking-widest uppercase flex items-center justify-center gap-3 outline-none cursor-pointer w-full sm:w-auto ${
-              audioEnabled 
-                ? 'bg-[var(--color-sage)]/10 border-[var(--color-sage)]/50 text-[var(--color-sage)] shadow-[0_0_15px_rgba(46,71,128,0.1)]' 
-                : 'bg-transparent border-[var(--color-hairline)] text-[var(--color-ink)] hover:bg-[var(--color-ink)]/5'
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${audioEnabled ? 'bg-[var(--color-sage)] animate-pulse' : 'bg-[var(--color-muted)]/50'}`} />
-            {audioEnabled ? 'SPATIAL AUDIO: ON' : 'SPATIAL AUDIO: OFF'}
-          </button>
-
-        </div>
-      </div>
-
+    start();
+    return()=>{active=false;clearTimeout(timer);clearInterval(watchdog);cancelAnimationFrame(renderFrame);stream?.getTracks().forEach(t=>t.stop());setHazardTone(false);tracker.reset();};
+  },[attempt]);
+  const retry=()=>{getAudioContext();setError('');setPhase('loading');setStats(null);setAttempt(a=>a+1);};
+  const soundTest=()=>{getAudioContext();playSafePing(-1);setTimeout(()=>playSafePing(1),1400);};
+  return <section className="vision-shell" aria-label="Saartheye prototype camera demo">
+    <header className="vision-header"><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div><button onClick={onStopDemo}>Stop demo</button></header>
+    <p className="vision-caution">Experimental prototype. Not a safety device or a replacement for a cane. Use only in a supervised, clear indoor space.</p>
+    <div className="vision-camera"><video ref={videoRef} autoPlay playsInline muted /><canvas ref={canvasRef} aria-hidden="true" />
+      {phase!=='ready'&&<div className="vision-message"><h2>{phase==='error'?'Could not start':'Preparing camera and local model'}</h2><p role={error?'alert':'status'}>{error||'First setup downloads the detector. Allow camera access when asked.'}</p>{phase==='error'&&<button onClick={retry}>Retry camera and model</button>}</div>}
     </div>
-  )
-}
-
-/* ═══════════════════════════════════════════════════
-   L/R AUDIO PANNING VISUALIZER
-   ═══════════════════════════════════════════════════ */
-function AudioPanBar() {
-  const [panState, setPanState] = useState({ pan: 0, active: false, isHazard: false })
-
-  useEffect(() => {
-    function handlePan(e) {
-      setPanState({ pan: e.detail.pan, active: e.detail.active, isHazard: e.detail.isHazard })
-    }
-    window.addEventListener('spatial-pan-live', handlePan)
-    return () => window.removeEventListener('spatial-pan-live', handlePan)
-  }, [])
-
-  const leftPercent = ((panState.pan + 1) / 2) * 75
-  const trackColor = panState.isHazard ? 'rgba(211,47,47,0.1)' : 'var(--color-hairline)'
-  const dotColor = panState.isHazard ? '#D32F2F' : 'var(--color-sage)'
-  const glow = panState.isHazard ? 'text-[#D32F2F]' : 'text-[var(--color-sage)]'
-  const shadow = panState.isHazard ? '0 0 10px rgba(211,47,47,0.4)' : '0 0 10px rgba(46,71,128,0.4)'
-
-  return (
-    <div className="absolute top-4 right-4 z-50">
-      <div className="rounded-full border border-[var(--color-hairline)] bg-[var(--color-paper)]/90 backdrop-blur-md px-5 py-2.5 flex items-center gap-3">
-        <span className={`text-[12px] font-bold ${panState.pan < -0.2 && panState.active ? glow : 'text-[var(--color-muted)]'}`} style={{ color: panState.pan < -0.2 && panState.active ? dotColor : undefined }}>L</span>
-        <div className="w-24 h-1.5 rounded-full relative overflow-hidden" style={{ backgroundColor: trackColor }}>
-          <div
-            className="absolute top-0 h-full w-6 rounded-full transition-all duration-100 ease-out"
-            style={{
-              left: `${leftPercent}%`, opacity: panState.active ? 1 : 0.2, backgroundColor: dotColor, boxShadow: panState.active ? shadow : 'none',
-            }}
-          />
-        </div>
-        <span className={`text-[12px] font-bold ${panState.pan > 0.2 && panState.active ? glow : 'text-[var(--color-muted)]'}`} style={{ color: panState.pan > 0.2 && panState.active ? dotColor : undefined }}>R</span>
-      </div>
+    <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p><div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>LEFT</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>RIGHT</span></div>
+      <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
+      <div className="vision-modes" aria-label="Alert mode">{['OUTDOOR','SOCIAL','STRESS TEST'].map(m=><button key={m} aria-pressed={contextMode===m} onClick={()=>setContextMode(m)}>{m==='OUTDOOR'?'Standard':m==='SOCIAL'?'Social':'Simulated stress'}</button>)}</div>
+      {contextMode==='STRESS TEST'&&<p className="vision-caution">SIMULATION: every detected object triggers a warning. Not a real approach measurement.</p>}
+      <div className="vision-metrics">{stats?<><span><b>{stats.hz.toFixed(1)}</b> completed detections/s</span><span><b>{Math.round(stats.p50)} / {Math.round(stats.p95)} ms</b> inference p50 / p95</span><span>{stats.hz>0&&stats.hz<3?'Slow device: cues may lag. ':''}{stats.samples} recent samples · first result {(stats.startup/1000).toFixed(1)} s · not end-to-end latency</span></>:<span>Real detection timings appear once the camera is running.</span>}</div>
+      <p className="vision-note">{offline} · Vibration support: {'vibrate' in navigator?'API available, test on phone':'unavailable'}.</p>
+      <p className="vision-note">80 trained classes only. No depth or physical speed measurement. Camera movement and similar objects can confuse tracking. No detection does not mean a clear path.</p>
     </div>
-  )
+  </section>;
 }
