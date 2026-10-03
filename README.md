@@ -1,6 +1,6 @@
 # Saartheye
 
-A browser prototype exploring local object detection and left/right audio cues for blind and low-vision users. It is not a safety device, a mobility aid validated for independent use, or a replacement for a cane. It has not been tested with blind users.
+A browser prototype exploring local object detection and spoken object/direction cues and optional tones for blind and low-vision users. It is not a safety device, a mobility aid validated for independent use, or a replacement for a cane. It has not been tested with blind users.
 
 [Existing main demo](https://saartheye-ai.vercel.app/) - the public demo may differ from this review branch.
 
@@ -9,7 +9,8 @@ A browser prototype exploring local object detection and left/right audio cues f
 - React 19, Vite, TensorFlow.js 4.22 and COCO-SSD 2.2.3 (`lite_mobilenet_v2`). Inference uses WebGL where available, with CPU fallback. It does not use YOLO or a phone NPU.
 - Camera permission and a rear-camera preference, with a 640x480 capture request. The actual resolution is browser/device dependent.
 - Greedy same-class IoU matching, smoothed boxes and timestamped relative image-area growth. Growth is an approach proxy, not physical speed, distance or collision prediction. Warnings need several observations with hysteresis.
-- Left/right stereo panning for one prioritized cue at a time. Presence sounds are 440 Hz. The warning tone is 880 Hz, with pulse rate mapped to the growth proxy. This is not full 3D audio.
+- Rate-limited spoken object and left/right/ahead cues with an installed local Web Speech voice only. Growing-box warnings say "box growing": camera movement can cause these, so they are not confirmed object approach. One utterance at a time, stale queue cancellation, on/off and spoken-direction test. No network-backed voice is selected; offline speech depends on installed voice availability and must be tested. With no local voice, Sound on provides tone fallback.
+- Optional left/right stereo panning for one prioritized cue at a time. Presence sounds are 440 Hz. The warning tone is 880 Hz, with pulse rate mapped to the growth proxy. This is not full 3D audio.
 - Standard and Social modes. Social softens cues for stable matched people while retaining warnings from other growing tracks. Simulated stress mode explicitly warns on every detection and is not measured approach behavior.
 - Optional vibration independent of sound, using the browser Vibration API. API presence does not prove haptics work on a particular phone.
 - Real completed detection rate and rolling p50/p95 inference duration in the HUD. These are not camera-to-sound latency. First-result time includes model/camera startup and user permission time.
@@ -53,7 +54,7 @@ Service worker registration is production-only. Test offline behavior using the 
 
 Record phone model, Android/Chrome versions and actual capture resolution. In a supervised clear indoor area, test left/right cue audibility, stable/growing people, a growing second object in Social mode, detection dropout, camera permission denial, audio off/vibration on, and model load retry. Log completed detection rate, inference p50/p95, first-result time and a short sustained run for slowdown. Separately test loaded-tab disconnection and app close/restart in airplane mode after offline readiness is verified. Keep failures in the report. Do not test blindfolded or in traffic.
 
-Phone measurements: **not collected yet**. Synthetic logic tests and desktop checks are not phone benchmarks or user validation.
+Two short OnePlus Nord 2 5G clips show about 3.5-3.7 completed detections/s, rolling inference p50 223-228 ms and p95 308-396 ms. These are uncontrolled session observations, not end-to-end latency or accuracy evidence. Tones are present in the second recording; physical audibility, spoken cues and offline restart still need verification. Synthetic logic tests and desktop checks are not phone benchmarks or user validation.
 
 ## Roadmap
 
