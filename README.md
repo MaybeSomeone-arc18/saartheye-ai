@@ -59,5 +59,3 @@ Two short OnePlus Nord 2 5G clips show about 3.5-3.7 completed detections/s, rol
 ## Roadmap
 
 A scoped native Android camera-to-bundled-model-to-stereo/haptic pipeline, device benchmarking, better tracking and alert evaluation, then consented accessibility feedback in a safe setting. Hardware acceleration and sub-15 ms latency are not promised.
-
-This project predates the iQOO Finale. Third-party components include React, Vite, TensorFlow.js, COCO-SSD and browser APIs. Existing code and third-party model use must be disclosed in submissions.
