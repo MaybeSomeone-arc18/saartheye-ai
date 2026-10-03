@@ -49,7 +49,7 @@ export function playSafePing(pan = 0) {
     try {
       gain.disconnect()
       panner.disconnect()
-    } catch (e) {}
+    } catch { /* Node may already be disconnected. */ }
   }, 1500)
 }
 
@@ -83,7 +83,7 @@ export function playAmbientPing(pan = 0) {
     try {
       gain.disconnect()
       panner.disconnect()
-    } catch (e) {}
+    } catch { /* Node may already be disconnected. */ }
   }, 2000)
 }
 
@@ -92,10 +92,12 @@ export function playAmbientPing(pan = 0) {
  * @param {boolean} active 
  * @param {number} pan -1.0 (Left) to +1.0 (Right)
  */
-export function setHazardTone(active, pan = 0) {
+export function setHazardTone(active, pan = 0, urgency = 0) {
+  if (!active && !hazardNode) return
   const ctx = getAudioContext()
   const now = ctx.currentTime
   const clampedPan = clampPan(pan)
+  const pulseHz = 1.2 + Math.max(0, Math.min(1, urgency)) * 2.8
 
   if (active && !hazardNode) {
     // Start new hazard tone
@@ -105,7 +107,7 @@ export function setHazardTone(active, pan = 0) {
 
     const lfo = ctx.createOscillator()
     lfo.type = 'sine'
-    lfo.frequency.setValueAtTime(1.2, now)
+    lfo.frequency.setValueAtTime(pulseHz, now)
 
     const lfoGain = ctx.createGain()
     lfoGain.gain.setValueAtTime(0.1, now) // LFO depth
@@ -131,6 +133,7 @@ export function setHazardTone(active, pan = 0) {
   } else if (active && hazardNode) {
     // Smoothly interpolate panning
     hazardNode.panner.pan.setTargetAtTime(clampedPan, now, 0.1)
+    hazardNode.lfo.frequency.setTargetAtTime(pulseHz, now, 0.2)
   } else if (!active && hazardNode) {
     // Fade out and stop
     const n = hazardNode
@@ -141,7 +144,7 @@ export function setHazardTone(active, pan = 0) {
         n.lfo.stop()
         n.masterGain.disconnect()
         n.panner.disconnect()
-      } catch (e) {}
+      } catch { /* Node may already be disconnected. */ }
     }, 500)
     hazardNode = null
   }
@@ -158,11 +161,11 @@ function clampPan(v) {
 export function vibrateHazard() {
   try {
     if (navigator.vibrate) navigator.vibrate([100, 50, 100])
-  } catch {}
+  } catch { /* Vibration is optional. */ }
 }
 
 export function vibrateTap() {
   try {
     if (navigator.vibrate) navigator.vibrate(30)
-  } catch {}
+  } catch { /* Vibration is optional. */ }
 }
