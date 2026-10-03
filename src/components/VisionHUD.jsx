@@ -24,7 +24,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     return()=>{active=false;navigator.serviceWorker?.removeEventListener('controllerchange',check);};
   },[]);
   useEffect(()=>{
-    let active=true,stream,timer,watchdog,renderFrame;
+    let active=true,stream,timer,watchdog,renderFrame,videoFrame;
     const tracker=createTracker();let objects=[],model,lastPing=0,lastVibration=0,staleMs=1500;
     const durations=[],completions=[];let started=performance.now(),lastUi=0,firstInference=null;
     const fail=(message)=>{if(active){setError(message);setPhase('error');}setHazardTone(false);};
@@ -51,6 +51,12 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         }
       }
       renderFrame=requestAnimationFrame(draw);
+    };
+    const scheduleNext=()=>{
+      if(!active)return;
+      const v=videoRef.current;
+      if(v?.requestVideoFrameCallback)videoFrame=v.requestVideoFrameCallback(()=>infer());
+      else timer=setTimeout(infer,0);
     };
     const infer=async()=>{
       if(!active)return;
@@ -86,7 +92,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
           lastUi=now;
         }
       }catch(err){clearOutput();fail(`Detection stopped: ${err.message||'unexpected error'}. Retry to restart.`);return;}
-      timer=setTimeout(infer,40); // Sequential detection, no overlapping inference.
+      scheduleNext(); // Fresh camera frame, sequential inference, no fixed idle gap.
     };
     async function start(){
       try{
@@ -104,7 +110,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
       }catch(err){stream?.getTracks().forEach(t=>t.stop());fail(err.name==='NotAllowedError'?'Camera access was denied. Allow the camera in browser settings, then retry.':err.name==='NotFoundError'?'No camera was found. Try Chrome on your phone.':`Could not start: ${err.message||'unknown error'}`);}
     }
     start();
-    return()=>{active=false;clearTimeout(timer);clearInterval(watchdog);cancelAnimationFrame(renderFrame);stream?.getTracks().forEach(t=>t.stop());setHazardTone(false);tracker.reset();};
+    return()=>{active=false;clearTimeout(timer);clearInterval(watchdog);cancelAnimationFrame(renderFrame);videoRef.current?.cancelVideoFrameCallback?.(videoFrame);stream?.getTracks().forEach(t=>t.stop());setHazardTone(false);tracker.reset();};
   },[attempt]);
   const retry=()=>{setError('');setPhase('loading');setStats(null);setAttempt(a=>a+1);};
   const soundTest=async()=>{
