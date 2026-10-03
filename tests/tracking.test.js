@@ -24,3 +24,7 @@ test('similar multi-object expansion suppresses camera-motion-uncertain warnings
  const t=createTracker();let r;for(let i=0;i<12;i++){const w=40+i*4;r=t.update([pred('chair',40,w),pred('person',300,w),pred('car',550,w)],i*160,800,600)}
  assert.ok(r.every(t=>t.motionUncertain));assert.ok(r.every(t=>t.riskLevel==='none'));assert.equal(chooseCue(r).kind,'presence');
 });
+test('multiple objects remain tracked and summary prioritizes path warning then central object',()=>{
+ const tracks=[{id:1,class:'person',pan:-.7,growth:0,coverage:.3,riskLevel:'none',inCorridor:false},{id:2,class:'chair',pan:0,growth:1,riskLevel:'path',coverage:.1,inCorridor:true},{id:3,class:'bottle',pan:.8,growth:0,coverage:.01,riskLevel:'none',inCorridor:false}];
+ const cue=chooseCue(tracks);assert.equal(cue.count,3);assert.equal(cue.summary.length,2);assert.equal(cue.summary[0].class,'chair');assert.equal(cue.target.id,2);assert.equal(tracks.length,3);
+});
