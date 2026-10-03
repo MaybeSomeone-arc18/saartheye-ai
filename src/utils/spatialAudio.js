@@ -9,22 +9,52 @@ let hazardNode = null
  * Lazily initialise AudioContext (must be called after user gesture).
  */
 export function getAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume()
+  if (!audioCtx || audioCtx.state === 'closed') {
+    const Audio = window.AudioContext || window.webkitAudioContext
+    if (!Audio) throw new Error('Web Audio is not supported in this browser.')
+    audioCtx = new Audio()
   }
   return audioCtx
+}
+
+// Call directly from a tap, then await resume before scheduling any tones.
+export async function unlockAudio() {
+  const ctx = getAudioContext()
+  if (ctx.state !== 'running') await ctx.resume()
+  if (ctx.state !== 'running') throw new Error(`Audio is ${ctx.state}. Tap again to enable it.`)
+  return ctx
+}
+
+export function audioState() { return audioCtx?.state || 'not started' }
+
+function connectPan(ctx, gain, pan) {
+  if (typeof ctx.createStereoPanner === 'function') {
+    const panner = ctx.createStereoPanner()
+    panner.pan.setValueAtTime(clampPan(pan), ctx.currentTime)
+    gain.connect(panner); panner.connect(ctx.destination)
+    return panner
+  }
+  // Older browsers still get an audible mono cue, without a stereo claim.
+  gain.connect(ctx.destination)
+  return { pan: { setTargetAtTime() {} }, disconnect() {} }
+}
+
+export async function testStereo() {
+  const ctx = await unlockAudio()
+  setHazardTone(false)
+  playSafePing(-1, ctx.currentTime + 0.05)
+  playSafePing(1, ctx.currentTime + 1.45)
+  return typeof ctx.createStereoPanner === 'function' ? 'stereo' : 'mono fallback'
 }
 
 /**
  * Play a safe target ping (440Hz Sine with exponential decay)
  * @param {number} pan -1.0 (Left) to +1.0 (Right)
  */
-export function playSafePing(pan = 0) {
+export function playSafePing(pan = 0, at) {
   const ctx = getAudioContext()
-  const now = ctx.currentTime
+  if (ctx.state !== 'running') return
+  const now = at ?? ctx.currentTime
 
   const osc = ctx.createOscillator()
   osc.type = 'sine'
@@ -35,12 +65,8 @@ export function playSafePing(pan = 0) {
   gain.gain.linearRampToValueAtTime(0.15, now + 0.05)
   gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0)
 
-  const panner = ctx.createStereoPanner()
-  panner.pan.setValueAtTime(clampPan(pan), now)
-
   osc.connect(gain)
-  gain.connect(panner)
-  panner.connect(ctx.destination)
+  const panner = connectPan(ctx, gain, pan)
 
   osc.start(now)
   osc.stop(now + 1.2)
@@ -58,6 +84,7 @@ export function playSafePing(pan = 0) {
  */
 export function playAmbientPing(pan = 0) {
   const ctx = getAudioContext()
+  if (ctx.state !== 'running') return
   const now = ctx.currentTime
 
   const osc = ctx.createOscillator()
@@ -69,12 +96,8 @@ export function playAmbientPing(pan = 0) {
   gain.gain.linearRampToValueAtTime(0.05, now + 0.1) // Much softer
   gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5)
 
-  const panner = ctx.createStereoPanner()
-  panner.pan.setValueAtTime(clampPan(pan), now)
-
   osc.connect(gain)
-  gain.connect(panner)
-  panner.connect(ctx.destination)
+  const panner = connectPan(ctx, gain, pan)
 
   osc.start(now)
   osc.stop(now + 1.6)
@@ -95,6 +118,7 @@ export function playAmbientPing(pan = 0) {
 export function setHazardTone(active, pan = 0, urgency = 0) {
   if (!active && !hazardNode) return
   const ctx = getAudioContext()
+  if (ctx.state !== 'running') return
   const now = ctx.currentTime
   const clampedPan = clampPan(pan)
   const pulseHz = 1.2 + Math.max(0, Math.min(1, urgency)) * 2.8
@@ -119,12 +143,8 @@ export function setHazardTone(active, pan = 0, urgency = 0) {
     lfo.connect(lfoGain)
     lfoGain.connect(masterGain.gain)
 
-    const panner = ctx.createStereoPanner()
-    panner.pan.setValueAtTime(clampedPan, now)
-
     osc.connect(masterGain)
-    masterGain.connect(panner)
-    panner.connect(ctx.destination)
+    const panner = connectPan(ctx, masterGain, clampedPan)
 
     osc.start(now)
     lfo.start(now)
