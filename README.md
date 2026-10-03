@@ -60,3 +60,18 @@ Two short OnePlus Nord 2 5G clips show about 3.5-3.7 completed detections/s, rol
 ## Roadmap
 
 A scoped native Android camera-to-bundled-model-to-stereo/haptic pipeline, device benchmarking, better tracking and alert evaluation, then consented accessibility feedback in a safe setting. Hardware acceleration and sub-15 ms latency are not promised.
+
+
+## Detector comparison review
+
+Light remains the default (COCO-SSD lite, TensorFlow.js WebGL/CPU). Balanced uses official YOLOX-Tiny ONNX (20.2 MB); Accuracy uses YOLOX-M (101.3 MB). YOLOX and its official release weights are Apache-2.0, Megvii 2021-2022. ONNX Runtime Web 1.23.2 is MIT. License texts are in public. YOLOX runs single-threaded WASM in a dedicated worker, with BGR 0-255 top-left letterboxing and class-agnostic NMS to reduce duplicate cross-class boxes. No Snapdragon NPU or WebGPU use is claimed.
+
+Build-only downloads pin SHA-256 hashes from https://github.com/Megvii-BaseDetection/YOLOX/releases/tag/0.1.1rc0. All runtime assets are same-origin and offline-cacheable. First setup needs roughly 140 MB including all modes; browser storage may be evicted. Weight bytes are included in deployment, retrieved by checksum at build rather than committed to Git.
+
+Open `/?compare` for same-camera-frame comparison. Three independent workers run sequentially on copies of the same snapshot, reducing concurrency contention. Shows per-model labels, scores, boxes, rolling inference p50/p95, worker load and exportable JSON. Potential standalone rate is reciprocal mean worker turnaround, NOT measured camera FPS. Sequential comparison cycle cadence is shown separately. Production settings differ: lite score 0.5; YOLOX 0.35. Compare misses and false labels manually; confidence scores are not calibrated across models.
+
+Small smoke test: seven COCO training photos and one owner screenshot, not held-out accuracy or blind-user validation. Tiny improved some chair/cup detections versus lite but missed the laptop in one case. M detected more chair/phone instances and recovered that laptop. None recognized the screenshot's partially hidden red bottle; its visible top was mislabeled phone/cup. Screenshot UI created false detections. These results do not establish a general accuracy improvement.
+
+Same desktop test environment, fake camera standalone: Tiny 2.8 detections/s, p50/p95 310/434 ms (35 samples); M 0.3/s, 2932/3015 ms (4); lite 0.9/s, 1086/1310 ms (11). Software-GPU limitations and unequal sample sizes matter. These are not M4 Air, Nord 2 or iQOO phone results. Actual devices must run comparison and standalone tests before selection. M is a slow explicit experiment, not navigation-ready.
+
+Strongest present use case: supervised indoor object-location research using spoken left/right/ahead cues. It is not reliable collision avoidance, distance measurement, or validated independent navigation. Office Kit can mirror the phone demo to a paired computer; inference remains on the phone. Deeper laptop inference via Office Kit is a proposal, not implemented camera transport.
