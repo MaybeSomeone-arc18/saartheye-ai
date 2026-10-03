@@ -11,9 +11,10 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   const [stats,setStats]=useState(null),[backend,setBackend]=useState(''),[cue,setCue]=useState('Waiting for camera and model');
   const speech=useRef(null);
   if(speech.current == null)speech.current=createSpeechController(window.speechSynthesis,window.SpeechSynthesisUtterance);
-  const [speechEnabled,setSpeechEnabled]=useState(false),[speechMessage,setSpeechMessage]=useState('Speech uses an installed local voice. Offline availability needs a phone test.');
+  const [speechEnabled,setSpeechEnabled]=useState(false),[speechMessage,setSpeechMessage]=useState('Checking browser voices. Bundled offline words are available after a tap.');
   const speechOn=useRef(false);
-  useEffect(()=>{speechOn.current=speechEnabled;if(!speechEnabled)speech.current.cancel();return()=>speech.current.cancel();},[speechEnabled]);
+  useEffect(()=>{speechOn.current=speechEnabled;if(!speechEnabled)speech.current.cancel();},[speechEnabled]);
+  useEffect(()=>{const unsubscribe=speech.current.subscribe(setSpeechMessage);return()=>{unsubscribe();speech.current.dispose();};},[]);
   const [pan,setPan]=useState(0),[testMessage,setTestMessage]=useState('');
   useEffect(()=>{output.current={audioEnabled,contextMode,haptics};if(!audioEnabled)setHazardTone(false);},[audioEnabled,contextMode,haptics]);
   useEffect(()=>{
@@ -79,7 +80,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         const mode=output.current.contextMode;const selected=chooseCue(objects,mode);
         const target=selected.target;
         const spoken=speechOn.current && speech.current.cue(selected);
-        if(speechOn.current && !spoken)setSpeechMessage('No installed local voice ready. Tone fallback uses Sound on. Try speech again after voices load.');
+        if(speechOn.current && !spoken)setSpeechMessage('Speech not ready. Tap Test spoken directions. Sound on enables tones.');
         if(output.current.audioEnabled && !spoken){
           setHazardTone(selected.kind==='warning',target?.pan||0,selected.urgency);
           const interval=selected.kind==='ambient'?6000:2000;
@@ -132,13 +133,12 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
       setTestMessage(`Test scheduled: left then right (${mode}). Audio ${audioState()}. If silent, check media volume, Bluetooth and headphones. Test works even with Sound off.`);
     } catch(err) { setTestMessage(`Audio test failed: ${err.message}`); }
   };
-  const toggleSpeech=()=>{
-    if(speechEnabled){setSpeechEnabled(false);setSpeechMessage('Speech off. Tones use the Sound control.');return;}
-    const ok=speech.current.test();setSpeechEnabled(true);
-    setHazardTone(false);
-    setSpeechMessage(ok?'Speech on: object, left/right/ahead, and box growing. Offline speech depends on the installed voice.':'No installed local voice ready. Turn Sound on for tones; try speech again after voices load.');
+  const toggleSpeech=async()=>{
+    if(speechEnabled){setSpeechEnabled(false);return;}
+    setSpeechEnabled(true);setHazardTone(false);
+    await speech.current.test();
   };
-  const testSpeech=()=>setSpeechMessage(speech.current.test()?'Speech test requested: left, right, ahead. Did you hear it?':'No installed local voice ready. Turn Sound on for tone fallback.');
+  const testSpeech=async()=>{setHazardTone(false);await speech.current.test();};
   return <section className="vision-shell" aria-label="Saartheye prototype camera demo">
     <header className="vision-header"><button onClick={onStopDemo}>STOP DEMO ✕</button><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div></header>
     <p className="vision-caution">Experimental prototype. Not a safety device or a replacement for a cane. Use only in a supervised, clear indoor space.</p>
