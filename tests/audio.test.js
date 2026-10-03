@@ -16,7 +16,7 @@ test('unsupported stereo panner keeps an audible mono fallback',async()=>{ctx.st
 
 const {createSpeechController,speechPhrase}=await import('../src/utils/spatialAudio.js');
 test('speech directions and honest growth phrase',()=>{
-  assert.equal(speechPhrase({kind:'warning',target:{class:'person',pan:-.5}}),'person, left, box growing');
+  assert.equal(speechPhrase({kind:'warning',target:{class:'person',pan:-.5}}),'person, left, possible approach');
   assert.equal(speechPhrase({kind:'presence',target:{class:'chair',pan:0}}),'chair, ahead');
 });
 test('speech is local-only, rate limited and cancels before new hazard',()=>{
@@ -24,7 +24,7 @@ test('speech is local-only, rate limited and cancels before new hazard',()=>{
   class U{constructor(text){this.text=text}}
   const c=createSpeechController(synth,U,()=>now);const cue={kind:'presence',target:{id:1,class:'chair',pan:0}};
   c.cue(cue);c.cue(cue);assert.equal(said.length,1);
-  now=2000;c.cue({kind:'warning',target:{id:2,class:'person',pan:.8}});assert.equal(said.length,2);assert.equal(cancels,2);assert.equal(said[1].text,'person, right, box growing');
+  now=2000;c.cue({kind:'warning',target:{id:2,class:'person',pan:.8}});assert.equal(said.length,2);assert.equal(cancels,2);assert.equal(said[1].text,'person, right, possible approach');
   c.cue({kind:'none'});assert.equal(cancels,3);
   assert.equal(createSpeechController({getVoices:()=>[{localService:false}]},U).available(),false);
 });
@@ -33,7 +33,7 @@ test('no local English voice plays bundled words and protects the test from empt
   const c=createSpeechController({getVoices:()=>[{lang:'en-US',localService:false}],cancel(){}},class{},()=>now,{prepare:async()=>{prepared++},play:(text,done)=>{played.push({text,done});return()=>{cancelled++}}});
   c.subscribe(m=>messages.push(m));assert.equal(await c.test(),true);assert.equal(prepared,1);assert.equal(played[0].text,'Left. Right. Ahead. Speech test.');
   c.cue({kind:'none'});assert.equal(cancelled,0);now=7000;played[0].done();
-  c.cue({kind:'warning',target:{id:2,class:'person',pan:.8}});assert.equal(played[1].text,'person, right, box growing');assert.match(messages.at(-1),/bundled offline words/);
+  c.cue({kind:'warning',target:{id:2,class:'person',pan:.8}});assert.equal(played[1].text,'person, right, possible approach');assert.match(messages.at(-1),/bundled offline words/);
   c.cancel();assert.equal(cancelled,2);
 });
 test('bundled speech is preferred even when a browser claims a local voice',async()=>{
