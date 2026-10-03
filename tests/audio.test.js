@@ -36,8 +36,8 @@ test('no local English voice plays bundled words and protects the test from empt
   c.cue({kind:'warning',target:{id:2,class:'person',pan:.8}});assert.equal(played[1].text,'person, right, box growing');assert.match(messages.at(-1),/bundled offline words/);
   c.cancel();assert.equal(cancelled,2);
 });
-test('browser voice error falls back to bundled speech and exposes the error',async()=>{
+test('bundled speech is preferred even when a browser claims a local voice',async()=>{
   const messages=[],clips=[];const synth={getVoices:()=>[{lang:'en-GB',name:'Local',localService:true}],cancel(){},speak(u){queueMicrotask(()=>u.onerror({error:'synthesis-failed'}))}};
   const c=createSpeechController(synth,class{},()=>0,{prepare:async()=>{},play:(text)=>{clips.push(text);return()=>{}}});
-  c.subscribe(m=>messages.push(m));await c.test();await new Promise(r=>setTimeout(r,1));assert.equal(clips.length,1);assert.match(messages.at(-1),/synthesis-failed/);c.dispose();
+  c.subscribe(m=>messages.push(m));await c.test();await new Promise(r=>setTimeout(r,1));assert.equal(clips.length,1);assert.match(messages.at(-1),/bundled offline words/);c.dispose();
 });
