@@ -41,3 +41,6 @@ test('bundled speech is preferred even when a browser claims a local voice',asyn
   const c=createSpeechController(synth,class{},()=>0,{prepare:async()=>{},play:(text)=>{clips.push(text);return()=>{}}});
   c.subscribe(m=>messages.push(m));await c.test();await new Promise(r=>setTimeout(r,1));assert.equal(clips.length,1);assert.match(messages.at(-1),/bundled offline words/);c.dispose();
 });
+test('speech summary is short and includes two objects with warning priority',()=>{
+ const chair={id:2,class:'chair',pan:0,riskLevel:'path'},person={id:1,class:'person',pan:-.8};assert.equal(speechPhrase({kind:'warning',target:chair,summary:[chair,person,{class:'bottle',pan:.8}]}),'chair, ahead, path warning, person, left');
+});
