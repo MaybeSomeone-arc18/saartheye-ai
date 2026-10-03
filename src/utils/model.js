@@ -13,3 +13,23 @@ export async function loadVisionModel() {
   return pending;
 }
 export const backendName=()=>tf.getBackend();
+
+// This module is bundled as a dedicated worker. Camera frames never leave the device.
+if (typeof document === 'undefined' && typeof self !== 'undefined') {
+  let detector;
+  self.onmessage = async ({data}) => {
+    try {
+      if (data.type === 'load') {
+        self.postMessage({type:'status',message:'Loading local model and warming up in a worker. Camera preview stays responsive.'});
+        detector = await loadVisionModel();
+        self.postMessage({type:'ready',backend:backendName()});
+      } else if (data.type === 'detect') {
+        const begin=performance.now();
+        try {
+          const predictions=await detector.detect(data.frame,12,0.5);
+          self.postMessage({type:'result',predictions,duration:performance.now()-begin});
+        } finally { data.frame.close(); }
+      }
+    } catch(error) { self.postMessage({type:'error',message:error.message || 'Worker inference failed'}); }
+  };
+}
