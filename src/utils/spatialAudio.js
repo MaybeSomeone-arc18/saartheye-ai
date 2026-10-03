@@ -254,7 +254,7 @@ export function createSpeechController(synth, Utterance, clock = () => performan
       try {synth?.cancel();stopClip=fallback.play(text,done);notify(`${reason} Playing bundled offline words.`)}
       catch(err){speaking=false;notify(`Offline speech failed: ${err.message}. Turn Sound on for tones.`)}
     }
-    if(!voice()||blocked){clip(blocked?'Browser voice failed.':'');return speaking}
+    if(ready||!voice()||blocked){clip(blocked?'Browser voice failed.':'');return speaking}
     const u=new Utterance(text);u.voice=voice();u.lang=u.voice.lang;u.rate=1;u.volume=1
     u.onstart=()=>{if(token===generation){clearTimeout(timer);notify(`Browser voice started: ${u.voice.name||u.lang}.`)}}
     u.onend=done
@@ -271,4 +271,4 @@ export function createSpeechController(synth, Utterance, clock = () => performan
       catch(err){notify(`Offline audio unavailable: ${err.message}.`);return say('Left. Right. Ahead. Speech test.','test',false,true)}
     },
   }
-     }
+   }
