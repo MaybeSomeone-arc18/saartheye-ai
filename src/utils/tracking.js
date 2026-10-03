@@ -76,14 +76,16 @@ export function createTracker(options = {}) {
   };
 }
 export function chooseCue(tracks, mode='OUTDOOR') {
-  const alerts=tracks.filter(t => mode==='STRESS TEST' || (t.riskLevel && t.riskLevel!=='none'));
-  if (alerts.length) return { kind:'warning', target:alerts.sort((a,b)=>(b.riskLevel==='path')-(a.riskLevel==='path')||b.growth-a.growth||b.coverage-a.coverage)[0],
-    urgency:mode==='STRESS TEST'?0.6:clamp((Math.max(...alerts.map(t=>t.growth))-.4)/1.1,0,1) };
-  const target=[...tracks].sort((a,b)=>b.coverage-a.coverage)[0];
-  return {kind:target?(mode==='SOCIAL'&&target.stablePerson?'ambient':'presence'):'none',target,urgency:0};
+  const warning=t=>mode==='STRESS TEST'||(t.riskLevel&&t.riskLevel!=='none');
+  const ranked=[...tracks].sort((a,b)=>Number(warning(b))-Number(warning(a))||(b.riskLevel==='path')-(a.riskLevel==='path')||Number(b.inCorridor)-Number(a.inCorridor)||b.growth-a.growth||b.coverage-a.coverage);
+  const target=ranked[0],alerts=ranked.filter(warning);
+  // At most two spoken objects, stable order within priority. All boxes still draw.
+  const summary=ranked.slice(0,2);
+  if(alerts.length)return {kind:'warning',target,summary,count:tracks.length,urgency:mode==='STRESS TEST'?.6:clamp((target.growth-.4)/1.1,0,1)};
+  return {kind:target?(mode==='SOCIAL'&&target.stablePerson?'ambient':'presence'):'none',target,summary,count:tracks.length,urgency:0};
 }
 export function percentile(values, percent) {
   if (!values.length) return null;
   const sorted=[...values].sort((a,b)=>a-b);
   return sorted[Math.max(0,Math.ceil(percent*sorted.length)-1)];
-}
+                              }
