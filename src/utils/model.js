@@ -1,3 +1,4 @@
+import { loadYolox } from './yolox';
 import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 let pending;
@@ -16,13 +17,13 @@ export const backendName=()=>tf.getBackend();
 
 // This module is bundled as a dedicated worker. Camera frames never leave the device.
 if (typeof document === 'undefined' && typeof self !== 'undefined') {
-  let detector;
+  let detector, backend;
   self.onmessage = async ({data}) => {
     try {
       if (data.type === 'load') {
         self.postMessage({type:'status',message:'Loading local model and warming up in a worker. Camera preview stays responsive.'});
-        detector = await loadVisionModel();
-        self.postMessage({type:'ready',backend:backendName()});
+        if(data.mode==='balanced'||data.mode==='accuracy'){detector=await loadYolox(data.mode);backend=`YOLOX-${data.mode==='accuracy'?'M':'Tiny'} · wasm`;}else{detector=await loadVisionModel();backend='COCO-SSD lite · '+backendName();}
+        self.postMessage({type:'ready',backend});
       } else if (data.type === 'detect') {
         const begin=performance.now();
         try {
