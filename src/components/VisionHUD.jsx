@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { loadVisionModel, backendName } from '../utils/model';
 import { createTracker, chooseCue, percentile } from '../utils/tracking';
-import { testStereo, audioState, playSafePing, playAmbientPing, setHazardTone, vibrateHazard } from '../utils/spatialAudio';
+import { createSpeechController, testStereo, audioState, playSafePing, playAmbientPing, setHazardTone, vibrateHazard } from '../utils/spatialAudio';
 import { offlineStatus } from '../utils/offline';
 
 export default function VisionHUD({ audioEnabled, audioMessage, contextMode, setContextMode, onToggleAudio, onStopDemo }) {
@@ -10,6 +10,11 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   const [haptics,setHaptics]=useState(false), [phase,setPhase]=useState('loading');
   const [error,setError]=useState(''),[attempt,setAttempt]=useState(0),[offline,setOffline]=useState('Checking offline setup...');
   const [stats,setStats]=useState(null),[backend,setBackend]=useState(''),[cue,setCue]=useState('Waiting for camera and model');
+  const speech=useRef(null);
+  if(speech.current == null)speech.current=createSpeechController(window.speechSynthesis,window.SpeechSynthesisUtterance);
+  const [speechEnabled,setSpeechEnabled]=useState(false),[speechMessage,setSpeechMessage]=useState('Speech uses an installed local voice. Offline availability needs a phone test.');
+  const speechOn=useRef(false);
+  useEffect(()=>{speechOn.current=speechEnabled;if(!speechEnabled)speech.current.cancel();return()=>speech.current.cancel();},[speechEnabled]);
   const [pan,setPan]=useState(0),[testMessage,setTestMessage]=useState('');
   useEffect(()=>{output.current={audioEnabled,contextMode,haptics};if(!audioEnabled)setHazardTone(false);},[audioEnabled,contextMode,haptics]);
   useEffect(()=>{
@@ -23,7 +28,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     const tracker=createTracker();let objects=[],model,lastPing=0,lastVibration=0,staleMs=1500;
     const durations=[],completions=[];let started=performance.now(),lastUi=0,firstInference=null;
     const fail=(message)=>{if(active){setError(message);setPhase('error');}setHazardTone(false);};
-    const clearOutput=()=>{objects=[];tracker.reset();setHazardTone(false);if(active){setCue('No fresh detections');setPan(0);}};
+    const clearOutput=()=>{speech.current.cancel();objects=[];tracker.reset();setHazardTone(false);if(active){setCue('No fresh detections');setPan(0);}};
     const draw=()=>{
       if(!active)return;
       const v=videoRef.current,c=canvasRef.current;
@@ -63,7 +68,9 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         objects=tracker.update(predictions,now,v.videoWidth,v.videoHeight);
         const mode=output.current.contextMode;const selected=chooseCue(objects,mode);
         const target=selected.target;
-        if(output.current.audioEnabled){
+        const spoken=speechOn.current && speech.current.cue(selected);
+        if(speechOn.current && !spoken)setSpeechMessage('No installed local voice ready. Tone fallback uses Sound on. Try speech again after voices load.');
+        if(output.current.audioEnabled && !spoken){
           setHazardTone(selected.kind==='warning',target?.pan||0,selected.urgency);
           const interval=selected.kind==='ambient'?6000:2000;
           if(target&&selected.kind!=='warning'&&now-lastPing>interval){
@@ -106,6 +113,13 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
       setTestMessage(`Test scheduled: left then right (${mode}). Audio ${audioState()}. If silent, check media volume, Bluetooth and headphones. Test works even with Sound off.`);
     } catch(err) { setTestMessage(`Audio test failed: ${err.message}`); }
   };
+  const toggleSpeech=()=>{
+    if(speechEnabled){setSpeechEnabled(false);setSpeechMessage('Speech off. Tones use the Sound control.');return;}
+    const ok=speech.current.test();setSpeechEnabled(true);
+    setHazardTone(false);
+    setSpeechMessage(ok?'Speech on: object, left/right/ahead, and box growing. Offline speech depends on the installed voice.':'No installed local voice ready. Turn Sound on for tones; try speech again after voices load.');
+  };
+  const testSpeech=()=>setSpeechMessage(speech.current.test()?'Speech test requested: left, right, ahead. Did you hear it?':'No installed local voice ready. Turn Sound on for tone fallback.');
   return <section className="vision-shell" aria-label="Saartheye prototype camera demo">
     <header className="vision-header"><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div><button onClick={onStopDemo}>Stop demo</button></header>
     <p className="vision-caution">Experimental prototype. Not a safety device or a replacement for a cane. Use only in a supervised, clear indoor space.</p>
@@ -115,6 +129,8 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p><div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>LEFT</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>RIGHT</span></div>
       <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
       <p className="vision-note" role="status">{testMessage || audioMessage}</p>
+      <div className="vision-controls"><button aria-pressed={speechEnabled} onClick={toggleSpeech}>Speech {speechEnabled?'on':'off'}</button><button onClick={testSpeech}>Test spoken directions</button></div>
+      <p className="vision-note" role="status">{speechMessage} Spoken warnings say "box growing", not a measured collision or object approach.</p>
       <div className="vision-modes" aria-label="Alert mode">{['OUTDOOR','SOCIAL','STRESS TEST'].map(m=><button key={m} aria-pressed={contextMode===m} onClick={()=>setContextMode(m)}>{m==='OUTDOOR'?'Standard':m==='SOCIAL'?'Social':'Simulated stress'}</button>)}</div>
       {contextMode==='STRESS TEST'&&<p className="vision-caution">SIMULATION: every detected object triggers a warning. Not a real approach measurement.</p>}
       <div className="vision-metrics">{stats?<><span><b>{stats.hz.toFixed(1)}</b> completed detections/s</span><span><b>{Math.round(stats.p50)} / {Math.round(stats.p95)} ms</b> inference p50 / p95</span><span>{stats.hz>0&&stats.hz<3?'Slow device: cues may lag. ':''}{stats.samples} recent samples · first result {(stats.startup/1000).toFixed(1)} s · not end-to-end latency</span></>:<span>Real detection timings appear once the camera is running.</span>}</div>
