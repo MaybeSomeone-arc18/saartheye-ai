@@ -28,3 +28,5 @@ test('multiple objects remain tracked and summary prioritizes path warning then 
  const tracks=[{id:1,class:'person',pan:-.7,growth:0,coverage:.3,riskLevel:'none',inCorridor:false},{id:2,class:'chair',pan:0,growth:1,riskLevel:'path',coverage:.1,inCorridor:true},{id:3,class:'bottle',pan:.8,growth:0,coverage:.01,riskLevel:'none',inCorridor:false}];
  const cue=chooseCue(tracks);assert.equal(cue.count,3);assert.equal(cue.summary.length,2);assert.equal(cue.summary[0].class,'chair');assert.equal(cue.target.id,2);assert.equal(tracks.length,3);
 });
+
+test('presence-only hybrid frames never create growth warnings',()=>{const tracker=createTracker({minScore:.35});for(let i=0;i<12;i++){const out=tracker.update([{class:'cell phone',score:.45,bbox:[250-i*4,150-i*4,30+i*12,30+i*12],presenceOnly:true}],i*300,640,480);assert.equal(out[0].riskLevel,'none');assert.equal(out[0].approaching,false);}});
