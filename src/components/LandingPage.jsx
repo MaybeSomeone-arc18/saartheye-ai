@@ -2,9 +2,9 @@ import { useState } from 'react';
 import VisionHUD from './VisionHUD';
 import { offlineStatus } from '../utils/offline';
 
-export default function LandingPage({audioEnabled,contextMode,onToggleAudio,setContextMode}) {
+export default function LandingPage({audioEnabled, audioMessage,contextMode,onToggleAudio,setContextMode}) {
   const [active,setActive]=useState(false),[cache,setCache]=useState('First setup needs internet. Check the offline cache before disconnecting.');
-  if(active)return <VisionHUD audioEnabled={audioEnabled} contextMode={contextMode} onToggleAudio={onToggleAudio} setContextMode={setContextMode} onStopDemo={()=>setActive(false)} />;
+  if(active)return <VisionHUD audioEnabled={audioEnabled} audioMessage={audioMessage} contextMode={contextMode} onToggleAudio={onToggleAudio} setContextMode={setContextMode} onStopDemo={()=>setActive(false)} />;
   return <main className="start-shell">
     <header className="start-header"><b>SAARTHEYE</b><a href="https://github.com/MaybeSomeone-arc18/saartheye-ai" target="_blank" rel="noreferrer">Source code</a></header>
     <section className="start-hero"><p className="start-eyebrow">Accessible navigation research · browser prototype</p><h1>Objects in view.<br/>Cues you can hear.</h1><p className="start-lead">Local object detection, left/right stereo cues and optional vibration. A small experiment in phone-based spatial assistance.</p><button className="start-launch" onClick={()=>setActive(true)}>Start camera demo</button><p className="start-safety">Not a safety device or a replacement for a cane. Not tested with blind users. Try only in a supervised, clear indoor space.</p></section>
