@@ -40,13 +40,13 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,rect.width,rect.height);
         const scale=Math.min(rect.width/v.videoWidth,rect.height/v.videoHeight);
         const ox=(rect.width-v.videoWidth*scale)/2,oy=(rect.height-v.videoHeight*scale)/2;
-        ctx.lineWidth=2;ctx.font='14px system-ui';
+        ctx.lineWidth=2;ctx.font='12px monospace';
         for(const t of objects){
-          const [x,y,w,h]=t.bbox;const color=t.approaching?'#ffb4a6':'#96e7c7';
+          const [x,y,w,h]=t.bbox;const color=t.approaching?'#D32F2F':'#2E4780';
           ctx.strokeStyle=color;ctx.strokeRect(x*scale+ox,y*scale+oy,w*scale,h*scale);
           const label=`${t.class} #${t.id} ${t.approaching?'growing':t.stablePerson?'stable':'detected'}`;
           const tx=Math.max(4,x*scale+ox),ty=Math.max(20,y*scale+oy);
-          ctx.fillStyle='#111a22';ctx.fillRect(tx-2,ty-17,ctx.measureText(label).width+8,22);
+          ctx.fillStyle='#F7F4EE';ctx.fillRect(tx-2,ty-17,ctx.measureText(label).width+8,22);
           ctx.fillStyle=color;ctx.fillText(label,tx+2,ty);
         }
       }
@@ -118,7 +118,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         setPhase('ready');setError('');lastResult.current=performance.now();
         draw();infer();
         watchdog=setInterval(()=>{if(active&&performance.now()-lastResult.current>staleMs){clearOutput();}},300);
-      }catch(err){stream?.getTracks().forEach(t=>t.stop());fail(err.name==='NotAllowedError'?'Camera access was denied. Allow the camera in browser settings, then retry.':err.name==='NotFoundError'?'No camera was found. Try Chrome on your phone.':`Could not start: ${err.message||'unknown error'}`);}
+      }catch(err){worker?.terminate();stream?.getTracks().forEach(t=>t.stop());fail(err.name==='NotAllowedError'?'Camera access was denied. Allow the camera in browser settings, then retry.':err.name==='NotFoundError'?'No camera was found. Try Chrome on your phone.':`Could not start: ${err.message||'unknown error'}`);}
     }
     start();
     return()=>{active=false;worker?.terminate();clearTimeout(timer);clearInterval(watchdog);cancelAnimationFrame(renderFrame);camera?.cancelVideoFrameCallback?.(videoFrame);stream?.getTracks().forEach(t=>t.stop());setHazardTone(false);tracker.reset();};
@@ -138,21 +138,23 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   };
   const testSpeech=()=>setSpeechMessage(speech.current.test()?'Speech test requested: left, right, ahead. Did you hear it?':'No installed local voice ready. Turn Sound on for tone fallback.');
   return <section className="vision-shell" aria-label="Saartheye prototype camera demo">
-    <header className="vision-header"><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div><button onClick={onStopDemo}>Stop demo</button></header>
+    <header className="vision-header"><button onClick={onStopDemo}>STOP DEMO ✕</button><div><b>SAARTHEYE</b><p>COCO-SSD · local inference {backend&&`· ${backend}`}</p></div></header>
     <p className="vision-caution">Experimental prototype. Not a safety device or a replacement for a cane. Use only in a supervised, clear indoor space.</p>
+      <div className="vision-modes" aria-label="Alert mode">{['OUTDOOR','SOCIAL','STRESS TEST'].map(m=><button key={m} aria-pressed={contextMode===m} onClick={()=>setContextMode(m)}>{m}</button>)}</div>
+    <div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>LEFT</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>RIGHT</span></div>
     <div className="vision-camera"><video ref={videoRef} autoPlay playsInline muted /><canvas ref={canvasRef} aria-hidden="true" />
       {phase!=='ready'&&<div className="vision-message"><h2>{phase==='error'?'Could not start':'Preparing camera and local model'}</h2><p role={error?'alert':'status'}>{error||loadingMessage}</p>{phase==='error'&&<button onClick={retry}>Retry camera and model</button>}</div>}
     </div>
-    <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p><div className="vision-pan" aria-label={`Cue direction: ${pan<-.2?'left':pan>.2?'right':'center'}`}><span>LEFT</span><div><i style={{left:`${((pan+1)/2)*92}%`}} /></div><span>RIGHT</span></div>
+    <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p>
       <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
-      <p className="vision-note" role="status">{testMessage || audioMessage}</p>
+      <p className="vision-note audio-diagnostic" role="status">{testMessage || audioMessage}</p>
       <div className="vision-controls"><button aria-pressed={speechEnabled} onClick={toggleSpeech}>Speech {speechEnabled?'on':'off'}</button><button onClick={testSpeech}>Test spoken directions</button></div>
-      <p className="vision-note" role="status">{speechMessage} Spoken warnings say "box growing", not a measured collision or object approach.</p>
-      <div className="vision-modes" aria-label="Alert mode">{['OUTDOOR','SOCIAL','STRESS TEST'].map(m=><button key={m} aria-pressed={contextMode===m} onClick={()=>setContextMode(m)}>{m}</button>)}</div>
+      <p className="vision-note speech-diagnostic" role="status">{speechMessage} Spoken warnings say "box growing", not a measured collision or object approach.</p>
+
       {contextMode==='STRESS TEST'&&<p className="vision-caution">SIMULATION: every detected object triggers a warning. Not a real approach measurement.</p>}
       <div className="vision-metrics">{stats?<><span><b>{stats.hz.toFixed(1)}</b> completed detections/s</span><span><b>{Math.round(stats.p50)} / {Math.round(stats.p95)} ms</b> inference p50 / p95</span><span>{stats.hz>0&&stats.hz<3?'Slow device: cues may lag. ':''}{stats.samples} recent samples · first result {(stats.startup/1000).toFixed(1)} s · not end-to-end latency</span></>:<span>Real detection timings appear once the camera is running.</span>}</div>
-      <p className="vision-note">{offline} · Vibration support: {'vibrate' in navigator?'API available, test on phone':'unavailable'}.</p>
-      <p className="vision-note">80 trained classes only. No depth or physical speed measurement. Camera movement and similar objects can confuse tracking. No detection does not mean a clear path.</p>
+      <details className="vision-details"><summary>Offline, support and limits</summary><p className="vision-note">{offline} · Vibration support: {'vibrate' in navigator?'API available, test on phone':'unavailable'}.</p>
+      <p className="vision-note">80 trained classes only. No depth or physical speed measurement. Camera movement and similar objects can confuse tracking. No detection does not mean a clear path.</p></details>
     </div>
   </section>;
 }
