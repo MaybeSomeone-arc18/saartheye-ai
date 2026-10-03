@@ -26,24 +26,6 @@ export default function App() {
     }
   }, [audioEnabled])
 
-  return () => {
-      window.removeEventListener('click', unlock)
-      window.removeEventListener('touchstart', unlock)
-    }
-  }, [])
-
-  /* Toggle handlers */
-  const handleToggleAudio = useCallback(() => {
-    vibrateTap()
-    getAudioContext()
-    setAudioEnabled(prev => {
-      if (!prev) playSafePing(0) // Center confirmation ping
-      return !prev
-    })
-  }, [])
-
-
-
   return (
     <div className="w-full h-dvh">
       <LandingPage 
