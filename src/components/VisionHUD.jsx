@@ -28,7 +28,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
   useEffect(()=>{
     let active=true,stream,timer,watchdog,renderFrame,videoFrame,worker,pendingRequest;
     const camera=videoRef.current;
-    const tracker=createTracker();let objects=[],lastPing=0,lastVibration=0,staleMs=1500;
+    const tracker=createTracker({minScore:modelMode==='light'?.5:.35});let objects=[],lastPing=0,lastVibration=0,staleMs=1500;
     const durations=[],completions=[];let started=performance.now(),lastUi=0,firstInference=null;
     const fail=(message)=>{if(active){setError(message);setPhase('error');}setHazardTone(false);};
     const clearOutput=()=>{speech.current.cancel();objects=[];tracker.reset();setHazardTone(false);if(active){setCue('No fresh detections');setScene([]);setPan(0);}};
@@ -79,7 +79,7 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
         staleMs=Math.min(4000,Math.max(1500,(percentile(durations,.95)||0)*2.5+100));
         while(durations.length>120)durations.shift();while(completions.length>120)completions.shift();
         objects=tracker.update(predictions,now,v.videoWidth,v.videoHeight);
-        const mode=output.current.contextMode;const selected=chooseCue(objects,mode);
+        const mode=modelMode==='hybrid'?'SOCIAL':output.current.contextMode;const selected=chooseCue(objects,mode);
         const target=selected.target;
         const spoken=speechOn.current && speech.current.cue(selected);
         if(speechOn.current && !spoken)setSpeechMessage('Speech not ready. Tap Test spoken directions. Sound on enables tones.');
@@ -151,8 +151,8 @@ export default function VisionHUD({ audioEnabled, audioMessage, contextMode, set
     </div>
     <div className="vision-dashboard"><p className="vision-cue" aria-live="polite">{cue}</p>
       <p className="vision-note" aria-live="off">{scene.length?`${scene.length} objects tracked: ${scene.slice(0,5).map(t=>`${t.name} ${t.direction}${t.risk==='path'?' (path warning)':t.risk==='approach'?' (possible approach)':''}`).join(' · ')}${scene.length>5?' · more boxes shown':''}. Speech summarizes up to two, warnings first.`:'No fresh supported objects. No detection does not mean clear.'}</p>
-      <div className="vision-controls" aria-label="Detector choice">{[['light','Light'],['balanced','Balanced'],['accuracy','Accuracy']].map(([value,label])=><button key={value} aria-pressed={modelMode===value} onClick={()=>{setPhase('loading');setError('');setStats(null);setBackend('');setModelMode(value);}}>{label}</button>)}</div>
-      <p className="vision-note">{modelMode==='accuracy'?'YOLOX-M: larger model, may be slow. Not a phone speed claim.':modelMode==='balanced'?'YOLOX-Tiny: more chair/cup detections in a small photo test; still misses objects.':'COCO-SSD lite: lighter fallback for slow phones.'} First offline setup downloads about 140 MB for all modes. No NPU use.</p>
+      <div className="vision-controls" aria-label="Detector choice">{[['light','Light'],['balanced','Balanced'],['accuracy','Accuracy'],['hybrid','Hybrid']].map(([value,label])=><button key={value} aria-pressed={modelMode===value} onClick={()=>{setPhase('loading');setError('');setStats(null);setBackend('');setModelMode(value);}}>{label}</button>)}</div>
+      <p className="vision-note">{modelMode==='hybrid'?'Experimental: fresh Lite frames, Tiny about once per 1.2 s. Presence cues only; no approach warnings.':modelMode==='accuracy'?'YOLOX-M: larger model, may be slow. Not a phone speed claim.':modelMode==='balanced'?'YOLOX-Tiny: more chair/cup detections in a small photo test; still misses objects.':'COCO-SSD lite: lighter fallback for slow phones.'} First offline setup downloads about 140 MB for all modes. No NPU use.</p>
       <div className="vision-controls"><button aria-pressed={audioEnabled} onClick={onToggleAudio}>Sound {audioEnabled?'on':'off'}</button><button aria-pressed={haptics} disabled={!('vibrate' in navigator)} onClick={()=>setHaptics(v=>!v)}>Vibration {haptics?'on':'off'}</button><button onClick={soundTest}>Test left / right</button></div>
       <p className="vision-note audio-diagnostic" role="status">{testMessage || audioMessage}</p>
       <div className="vision-controls"><button aria-pressed={speechEnabled} onClick={toggleSpeech}>Speech {speechEnabled?'on':'off'}</button><button onClick={testSpeech}>Test spoken directions</button></div>
