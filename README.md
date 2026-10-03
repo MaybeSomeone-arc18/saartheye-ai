@@ -79,3 +79,5 @@ Strongest present use case: supervised indoor object-location research using spo
 Hybrid is an opt-in experiment: fresh-frame lite detections, with Tiny replacing one pass about every 1.2 seconds. It does not merge old Tiny boxes onto newer video frames. Presence cues only, no approach warnings, because cross-detector box changes can create false growth. Test Mac and phone rather than assuming this is better than Tiny alone. On the software-GPU test, Hybrid 1.3/s p50/p95 462/1248ms (16 samples), Tiny standalone 3.1/s 289/334ms (36). Uncontrolled smoke test, not physical-device evidence. YOLOX tracker gate matches its 0.35 score threshold; this admits more labels and also more false positives than lite's 0.5 gate.
 
 Publication: work-in-progress commits on finale-polish-review use [saartheye-wip] and are skipped by the preview ignore rule; final untagged commits deploy after a clean checkout/test/lint/build. Main and production branch are not edited by review work.
+
+Ready review: hybrid presence experiment and matching YOLOX score gates. All physical-device selection remains provisional.
