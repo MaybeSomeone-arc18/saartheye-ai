@@ -2,21 +2,21 @@ import { useState, useEffect, useRef } from 'react'
 
 const GLYPHS = "/\\-_=+|<>~:*"
 
-export default function useScramble(finalText, { speed = 50, active = true } = {}) {
+export default function useScramble(finalText, { active = true } = {}) {
   const [displayText, setDisplayText] = useState(finalText || '')
   const animRef = useRef(null)
 
   useEffect(() => {
     if (!active) return
     if (!finalText) {
-      setDisplayText(finalText || '')
+      queueMicrotask(() => setDisplayText(finalText || ''))
       return
     }
 
     // Immediately resolve if reduced motion is preferred
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) {
-      setDisplayText(finalText)
+      queueMicrotask(() => setDisplayText(finalText))
       return
     }
 
@@ -55,7 +55,7 @@ export default function useScramble(finalText, { speed = 50, active = true } = {
         // terminal look, we could delay, but smooth text scramble is often just full framerate.
         animRef.current = requestAnimationFrame(tick)
       } else {
-        setDisplayText(finalText) // snap exactly to final
+        queueMicrotask(() => setDisplayText(finalText)) // snap exactly to final
       }
     }
 

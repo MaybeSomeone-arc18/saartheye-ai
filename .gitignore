@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated, checksum-verified model assets
+public/models/coco/
+public/pwa/

@@ -1,12 +1,14 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import useScramble from '../hooks/useScramble'
 import VisionHUD from './VisionHUD'
 import FieldCanvas from './FieldCanvas'
-import iqooBg from '../assets/iqoo-bg.webp'
+import paperBg from '../assets/iqoo-bg.webp'
 import ModalGraphics from './ModalGraphics'
 
 export default function LandingPage({ 
   audioEnabled,
+  audioMessage,
   contextMode,
   onToggleAudio,
   setContextMode
@@ -49,6 +51,8 @@ export default function LandingPage({
       </div>
     </div>
   )
+
+  if(isHUDActive)return createPortal(<VisionHUD audioEnabled={audioEnabled} audioMessage={audioMessage} contextMode={contextMode} setContextMode={setContextMode} onToggleAudio={onToggleAudio} onStopDemo={()=>setIsHUDActive(false)} />,document.body)
 
   return (
     <div className="relative min-h-dvh w-full overflow-x-hidden selection:bg-[var(--color-sage)] selection:text-white bg-[var(--color-paper)]">
@@ -124,25 +128,12 @@ export default function LandingPage({
         }}
       />
 
-      {/* ── FULLSCREEN HUD MODAL (when launched) ── */}
-      {isHUDActive && (
-        <div className="fixed inset-0 z-[100] bg-[var(--color-night)]">
-          <VisionHUD 
-            audioEnabled={audioEnabled}
-            contextMode={contextMode}
-            setContextMode={setContextMode}
-            onToggleAudio={onToggleAudio}
-            onStopDemo={() => setIsHUDActive(false)}
-          />
-        </div>
-      )}
-
       {/* ════════════════════════════════════════
           DESKTOP SVG MAPPED LAYOUT
           ════════════════════════════════════════ */}
       {/* ── DESKTOP & TABLET LAYOUT (SVG Mapped) ── */}
-      <div className="relative w-full mx-auto aspect-[1440/2880] @container" 
-           style={{ backgroundImage: `url(${iqooBg})`, backgroundSize: '100% 100%' }}>
+      <div className="original-map relative w-full mx-auto aspect-[1440/2880] @container" 
+           style={{ backgroundImage: `url(${paperBg})`, backgroundSize: '100% 100%' }}>
         
         {/* HERO (TOP SPLIT SCREEN IN SVG DOME) */}
         <div className="absolute top-[4%] left-[2%] w-[96%] flex items-start gap-[4cqi] z-20">
@@ -157,7 +148,7 @@ export default function LandingPage({
               {headline}
             </h2>
             <p className="font-sans text-[var(--color-ink)]/85 text-[1.3cqi] leading-[1.6] mb-[2cqi] max-w-[30cqi]">
-              An on-device navigation companion, running entirely on your device for real-time vision and 3D spatial audio.
+              A local vision prototype with spoken object and direction cues, optional tones and vibration. Not a safety device or a cane replacement.
             </p>
             <div className="flex items-center gap-[1cqi]">
               <button 
@@ -167,7 +158,7 @@ export default function LandingPage({
                 Launch the demo
               </button>
               <div className="font-mono text-[0.9cqi] text-[var(--color-muted)] font-medium">
-                100% on-device
+                Local detection
               </div>
             </div>
           </div>
@@ -187,9 +178,9 @@ export default function LandingPage({
                   MODE // {contextMode}
                 </div>
                 <p className="font-sans text-[1.1cqi] text-[var(--color-ink)]/70 leading-relaxed transition-opacity duration-300">
-                  {contextMode === 'OUTDOOR' && 'Standard high-sensitivity navigation. Alerts on all rapidly approaching objects and nearby collision hazards.'}
-                  {contextMode === 'SOCIAL' && 'Smart suppression active. Ignores stationary conversation partners. Emits soft ambient pings to maintain spatial awareness.'}
-                  {contextMode === 'STRESS TEST' && 'Simulated emergency override. Forces a rapidly approaching vector to demonstrate critical collision feedback loops.'}
+                  {contextMode === 'OUTDOOR' && 'Collision avoidance is the goal. Current approach/path warnings estimate box growth; camera motion can mislead them.'}
+                  {contextMode === 'SOCIAL' && 'Softer stable-person cues, while growing tracks can still warn. Experimental thresholds, not field validated.'}
+                  {contextMode === 'STRESS TEST' && 'Simulation only: every detected object warns. Not a measured approach or emergency response.'}
                 </p>
               </div>
             </div>
@@ -201,7 +192,7 @@ export default function LandingPage({
           <div className="font-serif text-[4cqi] text-[var(--color-sage)] leading-none mb-[0.5cqi]">01</div>
           <h3 className="font-sans text-[1.5cqi] font-medium text-[var(--color-ink)] mb-[1cqi]">Silicon Sensing</h3>
           <p className="font-sans text-[1cqi] text-[var(--color-ink)]/80 leading-snug">
-            Raw camera streams bypass overhead, piping directly into native memory. Zero frame drops, zero network calls.
+            Browser camera frames feed local detection. Actual camera size and completed detections/s depend on the phone.
           </p>
         </div>
 
@@ -210,7 +201,7 @@ export default function LandingPage({
           <div className="font-serif text-[4cqi] text-[var(--color-sage)] leading-none mb-[0.5cqi]">02</div>
           <h3 className="font-sans text-[1.5cqi] font-medium text-[var(--color-ink)] mb-[1cqi]">On-Device Inference</h3>
           <p className="font-sans text-[1cqi] text-[var(--color-ink)]/80 leading-snug">
-            Designed to run quantized models on the Hexagon NPU, targeting sub-15ms.
+            COCO-SSD lite uses TensorFlow.js WebGL, with CPU fallback. No phone NPU in this browser build.
           </p>
         </div>
 
@@ -219,14 +210,14 @@ export default function LandingPage({
           <div className="font-serif text-[4cqi] text-[var(--color-sage)] leading-none mb-[0.5cqi]">03</div>
           <h3 className="font-sans text-[1.5cqi] font-medium text-[var(--color-ink)] mb-[1cqi]">Acoustic Projection</h3>
           <p className="font-sans text-[1cqi] text-[var(--color-ink)]/80 leading-snug">
-            Spatial vectors map to 3D audio and dynamic haptics. Hear obstacles precisely where they exist in physical space.
+            Spoken object, left/right/ahead and box-growing cues use an installed local voice. Optional tones and vibration.
           </p>
         </div>
 
         {/* TARGET PERFORMANCE HEADER */}
         <div className="absolute top-[65.5%] left-1/2 -translate-x-1/2 w-[75%] z-10 text-center flex flex-col items-center">
-          <h3 className="font-mono text-[1.2cqi] font-bold tracking-widest text-[var(--color-sage)] uppercase mb-[0.5cqi]">Target on-device performance — Snapdragon Hexagon NPU</h3>
-          <p className="font-sans text-[1cqi] text-[var(--color-ink)]/70">Projected for the native build. This web prototype runs TensorFlow.js + Web Audio in the browser.</p>
+          <h3 className="font-mono text-[1.2cqi] font-bold tracking-widest text-[var(--color-sage)] uppercase mb-[0.5cqi]">Observed phone session - OnePlus Nord 2 5G</h3>
+          <p className="font-sans text-[1cqi] text-[var(--color-ink)]/70">Two short recordings, not a controlled benchmark. New speech and scheduling changes need phone retest.</p>
         </div>
 
         {/* 2x2 METRICS ARRAY (CENTER) */}
@@ -235,44 +226,44 @@ export default function LandingPage({
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
             <h4 className="font-mono text-[0.8cqi] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-[1cqi]">Latency</h4>
             <div className="flex flex-col gap-[0.2cqi] mb-[1cqi]">
-              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">Target: ~11ms <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">on-NPU</span></div>
-              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">~1,200ms <span className="font-sans text-[0.8cqi]">cloud</span></div>
+              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">223-228ms <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">inference p50</span></div>
+              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">308-396ms <span className="font-sans text-[0.8cqi]">inference p95</span></div>
             </div>
-            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Sub-frame hazard classification faster than human blink rate.</p>
+            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">About 3.5-3.7 completed detections/s in earlier sessions; not camera-to-sound latency.</p>
           </div>
           {/* Card 2: Isolation */}
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
             <h4 className="font-mono text-[0.8cqi] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-[1cqi]">Isolation</h4>
             <div className="flex flex-col gap-[0.2cqi] mb-[1cqi]">
-              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">100% Air-Gapped <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Airplane mode</span></div>
-              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">5G/Wi-Fi Required <span className="font-sans text-[0.8cqi]">Fails in dead zones</span></div>
+              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">Cached after setup <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Airplane mode</span></div>
+              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">Phone restart pending <span className="font-sans text-[0.8cqi]">Verify on device</span></div>
             </div>
-            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Uncompromising mobility in basements, underground transit, and rural dead zones.</p>
+            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">App and model cached after online setup. Storage may be evicted. Bundled spoken words also cache offline.</p>
           </div>
           {/* Card 3: Privacy */}
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
             <h4 className="font-mono text-[0.8cqi] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-[1cqi]">Privacy</h4>
             <div className="flex flex-col gap-[0.2cqi] mb-[1cqi]">
-              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">0 Bytes Sent <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Local RAM</span></div>
-              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">Continuous Stream <span className="font-sans text-[0.8cqi]">Cloud feed</span></div>
+              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">No frame upload <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">by app code</span></div>
+              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">80 trained classes <span className="font-sans text-[0.8cqi]">limited detection</span></div>
             </div>
-            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Frames are processed in local memory and never leave the device.</p>
+            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">The app does not record or upload camera frames. No detection does not mean a clear path.</p>
           </div>
           {/* Card 4: Cost */}
           <div className="bg-[var(--color-paper)]/80 backdrop-blur-md p-[2cqi] flex flex-col hover:bg-[var(--color-paper)] transition-colors">
             <h4 className="font-mono text-[0.8cqi] font-bold tracking-widest text-[var(--color-muted)] uppercase mb-[1cqi]">Operating Cost</h4>
             <div className="flex flex-col gap-[0.2cqi] mb-[1cqi]">
-              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">$0 Server Cost <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">Local silicon</span></div>
-              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">Token Billing <span className="font-sans text-[0.8cqi]">API overhead</span></div>
+              <div className="font-serif text-[1.4cqi] text-[var(--color-sage)] leading-none">No paid inference <span className="font-sans text-[0.8cqi] text-[var(--color-ink)]">browser APIs</span></div>
+              <div className="font-serif text-[1.1cqi] text-[var(--color-muted)] opacity-60">No cloud TTS <span className="font-sans text-[0.8cqi]">local voices only</span></div>
             </div>
-            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">Zero recurring API costs, zero cloud compute infrastructure.</p>
+            <p className="font-sans text-[0.8cqi] text-[var(--color-ink)]/80 leading-snug">No inference or speech API billing. Hosting usage remains subject to provider limits.</p>
           </div>
         </div>
 
         {/* CTA (CENTER BOTTOM) */}
         <div className="absolute top-[89%] left-1/2 -translate-x-1/2 flex flex-col items-center w-full z-10">
           <h2 className="font-serif text-[3.5cqi] text-[var(--color-ink)] mb-[1.5cqi] text-center leading-tight">
-            Uncompromising mobility,<br/>executed locally on silicon.
+            A spatial assistance experiment,<br/>built locally, tested honestly.
           </h2>
           <button 
             onClick={() => setIsHUDActive(true)}
@@ -294,18 +285,18 @@ export default function LandingPage({
           {/* Trending Marquee */}
           <div className="flex w-full overflow-hidden whitespace-nowrap py-4 border-y border-[var(--color-hairline)] opacity-60 group">
             <div className="flex animate-marquee items-center justify-around font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-ink)] group-hover:[animation-play-state:paused] flex-shrink-0 min-w-full">
-              <span className="mx-8">● 100% Air-Gapped</span>
-              <span className="mx-8">● Sub-15ms Latency</span>
-              <span className="mx-8">● Zero Cloud Reliance</span>
-              <span className="mx-8">● NPU Accelerated</span>
-              <span className="mx-8">● Zero Data Footprint</span>
+              <span className="mx-8">● Cached after setup</span>
+              <span className="mx-8">● Measured Inference</span>
+              <span className="mx-8">● Local Speech Voices</span>
+              <span className="mx-8">● WebGL / CPU</span>
+              <span className="mx-8">● No Frame Upload</span>
             </div>
             <div className="flex animate-marquee items-center justify-around font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--color-ink)] group-hover:[animation-play-state:paused] flex-shrink-0 min-w-full" aria-hidden="true">
-              <span className="mx-8">● 100% Air-Gapped</span>
-              <span className="mx-8">● Sub-15ms Latency</span>
-              <span className="mx-8">● Zero Cloud Reliance</span>
-              <span className="mx-8">● NPU Accelerated</span>
-              <span className="mx-8">● Zero Data Footprint</span>
+              <span className="mx-8">● Cached after setup</span>
+              <span className="mx-8">● Measured Inference</span>
+              <span className="mx-8">● Local Speech Voices</span>
+              <span className="mx-8">● WebGL / CPU</span>
+              <span className="mx-8">● No Frame Upload</span>
             </div>
           </div>
 
@@ -316,12 +307,12 @@ export default function LandingPage({
               <div className="w-2 h-2 md:w-[0.55vw] md:h-[0.55vw] bg-[var(--color-sage)] rounded-full animate-pulse shadow-[0_0_10px_var(--color-sage)]"></div>
             </div>
             <div className="font-mono text-[10px] md:text-[0.7vw] font-bold tracking-widest uppercase text-[var(--color-ink)] leading-tight">
-              System Online <br/> <span className="text-[var(--color-muted)]">NPU Active</span>
+              Prototype Ready <br/> <span className="text-[var(--color-muted)]">Browser Prototype</span>
             </div>
           </div>
           
           <div className="font-mono text-[10px] md:text-[0.7vw] font-bold tracking-widest uppercase text-[var(--color-muted)] flex gap-8 md:gap-[2vw]">
-            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer" onClick={() => setIsAboutOpen(true)}>SAARTHEYE v1.0.0</span>
+            <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer" onClick={() => setIsAboutOpen(true)}>August prototype · review</span>
             <span className="hover:text-[var(--color-ink)] transition-colors cursor-pointer">2026</span>
           </div>
         </footer>
@@ -361,8 +352,7 @@ export default function LandingPage({
                     The charioteer concept of invisible spatial guidance.
                   </h4>
                   <p className="font-sans text-[15px] md:text-[17px] text-[var(--color-ink)]/80 leading-relaxed">
-                    In ancient epics, a <em>Saarthi</em> (सारथि) is the ultimate guide—a charioteer who sees the battlefield clearly, anticipating hazards before they materialize, and steering the hero to safety. We architected Saartheye around this exact philosophy. It isn't a passive camera; it is an active, invisible sensory organ that interprets physical space and whispers actionable guidance into your ears, turning a smartphone into a cognitive spatial shield.
-                  </p>
+                    A Saarthi (सारथि) is a guide. This prototype explores local object recognition and spoken direction cues. It has not been tested with blind users and is not safe for independent navigation. Use only in a supervised, clear indoor space.</p>
                 </div>
               </section>
 
@@ -377,17 +367,16 @@ export default function LandingPage({
                     Why On-Device Silicon Wins.
                   </h4>
                   <p className="font-sans text-[15px] md:text-[17px] text-[var(--color-ink)]/80 leading-relaxed mb-6">
-                    Cloud-based vision APIs are brittle. They require persistent 5G connections and cost hundreds of milliseconds in round-trip latency. When you're navigating a busy intersection, a 1,200ms delay is the difference between safety and collision.
-                  </p>
+                    COCO-SSD lite detects trained objects locally. Tracking uses image-box growth, not physical distance or velocity. Speech uses a local English voice or bundled offline words. Offline close/restart and physical audibility still need phone verification.</p>
                   <ul className="space-y-4 font-mono text-[11px] text-[var(--color-ink)]/70 uppercase tracking-wide">
                     <li className="flex items-center gap-3">
-                      <span className="text-[var(--color-sage)]">●</span> Target: ~11ms NPU speed vs ~1,200ms Cloud latency
+                      <span className="text-[var(--color-sage)]">●</span> 223-228ms NPU speed vs 308-396ms Cloud latency
                     </li>
                     <li className="flex items-center gap-3">
-                      <span className="text-[var(--color-sage)]">●</span> 100% Air-gapped isolation
+                      <span className="text-[var(--color-sage)]">●</span> Cache after online setup; installed voice needed
                     </li>
                     <li className="flex items-center gap-3">
-                      <span className="text-[var(--color-sage)]">●</span> 0 Bytes privacy footprint
+                      <span className="text-[var(--color-sage)]">●</span> No frame recording or upload in app code
                     </li>
                   </ul>
                 </div>
@@ -401,20 +390,20 @@ export default function LandingPage({
                 </div>
                 <div className="md:w-2/3">
                   <h4 className="font-serif text-2xl md:text-3xl text-[var(--color-ink)] mb-4">
-                    Forged for the Hexagon NPU.
+                    Built for the browser.
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
                     <div className="border border-[var(--color-hairline)] bg-[var(--color-paper)] p-6 rounded-2xl">
                       <div className="font-mono text-[10px] text-[var(--color-muted)] font-bold tracking-widest uppercase mb-2">Compute Core</div>
-                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">Qualcomm Snapdragon 8 Gen 3 HTP</div>
+                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">WebGL with CPU fallback</div>
                     </div>
                     <div className="border border-[var(--color-hairline)] bg-[var(--color-paper)] p-6 rounded-2xl">
                       <div className="font-mono text-[10px] text-[var(--color-muted)] font-bold tracking-widest uppercase mb-2">Inference Engine</div>
-                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">LiteRT QNN Delegate</div>
+                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">COCO-SSD lite / TensorFlow.js</div>
                     </div>
                     <div className="border border-[var(--color-hairline)] bg-[var(--color-paper)] p-6 rounded-2xl sm:col-span-2">
                       <div className="font-mono text-[10px] text-[var(--color-muted)] font-bold tracking-widest uppercase mb-2">Memory Pipeline</div>
-                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">Zero-Copy C++ NDK Buffer Pipeline</div>
+                      <div className="font-serif text-[19px] leading-tight text-[var(--color-ink)]">Browser camera, matched tracks, local speech</div>
                     </div>
                   </div>
                 </div>
