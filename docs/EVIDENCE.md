@@ -8,7 +8,7 @@ current code, not carried over from an older session. Failed checks stay listed.
 
 | Check | Result | How |
 | --- | --- | --- |
-| Logic test suite | 25/25 pass | Fresh clone of `main` (13eb31b), `npm test` on Node 22.23.3 |
+| Logic test suite | 25/25 pass on `main`; 31/31 on branch `basis-evidence-prep` | Fresh clone of `main` (13eb31b), `npm test` on Node 22.23.3; branch adds 6 offlineStatus behavior tests |
 | Live site renders | Pass | saartheye-ai.vercel.app loaded in a browser; honest limits shown on page |
 | Public claims honesty | Pass | Page and README state: prototype, not a safety device, not tested with blind users |
 
