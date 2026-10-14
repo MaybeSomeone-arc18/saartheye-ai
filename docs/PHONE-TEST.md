@@ -34,6 +34,12 @@ Fill in during the session. Keep failures - they are results too.
 Metrics to copy from the HUD at the end: completed detections/s ____ ,
 inference p50 ____ ms, p95 ____ ms, first-result time ____ s.
 
+## Privacy
+
+No recording of people. Any saved frames or clips stay on the phone and are
+never uploaded or shared without the owner's explicit go; cue feedback can be
+recorded as numbers and notes instead of video.
+
 ## After the session
 
 Add a dated row to docs/EVIDENCE.md marked fresh, with this template attached
